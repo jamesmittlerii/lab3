@@ -88,12 +88,16 @@ struct ConfettiView: View {
 }
 
 struct ContentView: View {
+    // Get build number at runtime
+    private static let buildNumber: String = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+    private static let highScoreKey = "highScore_\(ContentView.buildNumber)"
+    
     @State private var cards: [Card] = ContentView.generateCards()
     @State private var indicesOfFaceUp: [Int] = []
     @State private var showConfetti = false
     @State private var confettiID = UUID()
     @State private var flipCount = 0
-    @AppStorage("highScore") private var highScore: Int = 0
+    @AppStorage(Self.highScoreKey) private var highScore: Int = 0
 
     static func generateCards() -> [Card] {
         let chosen = allImages.shuffled().prefix(12)
@@ -203,4 +207,3 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
-
