@@ -96,7 +96,7 @@ struct ContentView: View {
     @AppStorage("highScore") private var highScore: Int = 0
 
     static func generateCards() -> [Card] {
-        let chosen = allImages.shuffled().prefix(6)
+        let chosen = allImages.shuffled().prefix(12)
         let pairs = Array(chosen) + Array(chosen)
         return pairs.shuffled().map { Card(content: $0) }
     }
