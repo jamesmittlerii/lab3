@@ -148,9 +148,8 @@ func reportScore(_ score: Int, toLeaderboard leaderboardID: String) {
     }
 }
 
-// Load the high score from Game Center (iOS 14+ API)
+// Load the lowest score globally from Game Center (ascending leaderboard)
 func loadHighScoreFromGameCenter(leaderboardID: String, completion: @escaping (Int?) -> Void) {
-    // Only works if authenticated
     GKLeaderboard.loadLeaderboards(IDs: [leaderboardID]) { leaderboards, error in
         if let error = error {
             print("Error loading leaderboard: \(error.localizedDescription)")
@@ -163,22 +162,23 @@ func loadHighScoreFromGameCenter(leaderboardID: String, completion: @escaping (I
             return
         }
 
-        // Load entry for the local player; provide a minimal range
+        // Since the leaderboard is configured as "lower is better",
+        // the top global entry (range 1..1) is the lowest score.
         leaderboard.loadEntries(
             for: .global,
             timeScope: .allTime,
             range: NSRange(location: 1, length: 1)
-        ) { localPlayerEntry, entries, totalPlayerCount, error in
+        ) { _, entries, _, error in
             if let error = error {
                 print("Error loading entries: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
-            if let localPlayerEntry = localPlayerEntry {
-                completion(Int(localPlayerEntry.score))
-            } else {
+            guard let first = entries?.first else {
                 completion(nil)
+                return
             }
+            completion(Int(first.score))
         }
     }
 }
@@ -237,13 +237,13 @@ struct ContentView: View {
 
     func checkForWin() {
         if cards.allSatisfy({ $0.solved }) {
-            // Always fetch latest GC score, then decide to submit
-            loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { gcScore in
+            // Fetch global lowest GC score, then decide to submit
+            loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { globalLowest in
                 let newScore = flipCount
                 let shouldSubmit: Bool
-                if let gcScore = gcScore {
+                if let globalLowest = globalLowest {
                     // Lower flips is better
-                    shouldSubmit = newScore < gcScore
+                    shouldSubmit = newScore < globalLowest
                 } else {
                     // No GC score yet, submit ours
                     shouldSubmit = true
@@ -253,10 +253,10 @@ struct ContentView: View {
                     reportScore(newScore, toLeaderboard: Self.leaderboardID)
                 }
 
-                // Update the in-memory display of GC best
+                // Update the in-memory display of GC best (lowest globally including ours if better)
                 DispatchQueue.main.async {
-                    if let gcScore = gcScore {
-                        gameCenterBest = min(gcScore, newScore)
+                    if let globalLowest = globalLowest {
+                        gameCenterBest = min(globalLowest, newScore)
                     } else {
                         gameCenterBest = newScore
                     }
