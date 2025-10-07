@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import GameKit
 
 let allImages = ["Man1","Man2","Man3","Man4","Man5","Man6","Man7","Man8","Man9","Sou1","Sou2","Sou3","Sou4","Sou5","Sou6","Sou7","Sou8","Sou9"]
 
@@ -87,17 +88,114 @@ struct ConfettiView: View {
     }
 }
 
+// Helper to get the current key window’s root view controller in a scene-based app
+private func currentRootViewController() -> UIViewController? {
+    // Find the active foreground scene
+    let scenes = UIApplication.shared.connectedScenes
+        .compactMap { $0 as? UIWindowScene }
+        .filter { $0.activationState == .foregroundActive }
+
+    // Prefer key window; otherwise first window
+    for scene in scenes {
+        if let keyWindow = scene.windows.first(where: { $0.isKeyWindow }),
+           let root = keyWindow.rootViewController {
+            return root
+        }
+        if let anyWindow = scene.windows.first,
+           let root = anyWindow.rootViewController {
+            return root
+        }
+    }
+    return nil
+}
+
+// Game Center login helper
+func authenticateGameCenter(completion: ((Error?) -> Void)? = nil) {
+    GKLocalPlayer.local.authenticateHandler = { gcAuthVC, error in
+        if let vc = gcAuthVC {
+            // Present from the active scene’s rootViewController (iOS 15+ friendly)
+            if let rootVC = currentRootViewController() {
+                rootVC.present(vc, animated: true)
+            } else {
+                // As a fallback, try to find a top-most controller to present from
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first,
+                   let root = window.rootViewController {
+                    root.present(vc, animated: true)
+                } else {
+                    // Could not find a presentation anchor
+                    print("Game Center: Unable to find a rootViewController to present authentication UI.")
+                }
+            }
+        }
+        completion?(error)
+    }
+}
+
+// Report score to Game Center (modern iOS 14+ API, no fallback)
+func reportScore(_ score: Int, toLeaderboard leaderboardID: String) {
+    GKLeaderboard.submitScore(
+        score,
+        context: 0,
+        player: GKLocalPlayer.local,
+        leaderboardIDs: [leaderboardID]
+    ) { error in
+        if let error = error {
+            print("Error reporting score: \(error.localizedDescription)")
+        } else {
+            print("Score reported successfully!")
+        }
+    }
+}
+
+// Load the high score from Game Center (iOS 14+ API)
+func loadHighScoreFromGameCenter(leaderboardID: String, completion: @escaping (Int?) -> Void) {
+    // Only works if authenticated
+    GKLeaderboard.loadLeaderboards(IDs: [leaderboardID]) { leaderboards, error in
+        if let error = error {
+            print("Error loading leaderboard: \(error.localizedDescription)")
+            completion(nil)
+            return
+        }
+        guard let leaderboard = leaderboards?.first else {
+            print("Leaderboard not found for ID: \(leaderboardID)")
+            completion(nil)
+            return
+        }
+
+        // Load entry for the local player; provide a minimal range
+        leaderboard.loadEntries(
+            for: .global,
+            timeScope: .allTime,
+            range: NSRange(location: 1, length: 1)
+        ) { localPlayerEntry, entries, totalPlayerCount, error in
+            if let error = error {
+                print("Error loading entries: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            if let localPlayerEntry = localPlayerEntry {
+                completion(Int(localPlayerEntry.score))
+            } else {
+                completion(nil)
+            }
+        }
+    }
+}
+
 struct ContentView: View {
     // Get build number at runtime
     private static let buildNumber: String = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
     private static let highScoreKey = "highScore_\(ContentView.buildNumber)"
-    
+    private static let leaderboardID = "KingOfTheHill" // <-- Set your real leaderboard ID here
+
     @State private var cards: [Card] = ContentView.generateCards()
     @State private var indicesOfFaceUp: [Int] = []
     @State private var showConfetti = false
     @State private var confettiID = UUID()
     @State private var flipCount = 0
     @AppStorage(Self.highScoreKey) private var highScore: Int = 0
+    @State private var gameCenterError: String?
 
     static func generateCards() -> [Card] {
         let chosen = allImages.shuffled().prefix(12)
@@ -145,6 +243,8 @@ struct ContentView: View {
             // Update high score if it's 0 (never played) or if this game is better
             if highScore == 0 || flipCount < highScore {
                 highScore = flipCount
+                // Submit new high score to Game Center
+                reportScore(highScore, toLeaderboard: Self.leaderboardID)
             }
             confettiID = UUID()
             showConfetti = true
@@ -161,6 +261,18 @@ struct ContentView: View {
         flipCount = 0
     }
 
+    func refreshHighScoreFromGameCenter() {
+        loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { score in
+            DispatchQueue.main.async {
+                if let score = score {
+                    if highScore == 0 || score < highScore {
+                        highScore = score
+                    }
+                }
+            }
+        }
+    }
+
     var body: some View {
         ZStack {
             ScrollView {
@@ -169,9 +281,16 @@ struct ContentView: View {
                         Text("Flips: \(flipCount)")
                             .font(.headline)
                             .foregroundColor(.blue)
-                        Text("Best: \(highScore == 0 ? "--" : "\(highScore)")")
+                        Text(highScore == 0 ? "Best: --" : "Best: \(highScore)")
                             .font(.headline)
                             .foregroundColor(.green)
+                        Button(action: {
+                            refreshHighScoreFromGameCenter()
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                                .foregroundColor(.gray)
+                        }
+                        .help("Refresh high score from Game Center")
                     }
                     .padding(.top, 12)
 
@@ -199,8 +318,26 @@ struct ContentView: View {
                     .transition(.opacity)
                     .zIndex(1)
             }
+            // Optional: Show Game Center error alert
+            if let gameCenterError = gameCenterError {
+                VStack {
+                    Spacer()
+                    Text("Game Center Error: \(gameCenterError)")
+                        .foregroundColor(.red)
+                        .padding()
+                }
+            }
         }
         .animation(.default, value: showConfetti)
+        .onAppear {
+            authenticateGameCenter { error in
+                if let error = error {
+                    self.gameCenterError = error.localizedDescription
+                } else {
+                    refreshHighScoreFromGameCenter()
+                }
+            }
+        }
     }
 }
 
