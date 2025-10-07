@@ -184,9 +184,6 @@ func loadHighScoreFromGameCenter(leaderboardID: String, completion: @escaping (I
 }
 
 struct ContentView: View {
-    // Get build number at runtime
-    private static let buildNumber: String = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-    private static let highScoreKey = "highScore_\(ContentView.buildNumber)"
     private static let leaderboardID = "KingOfTheHill" // <-- Set your real leaderboard ID here
 
     @State private var cards: [Card] = ContentView.generateCards()
@@ -194,8 +191,8 @@ struct ContentView: View {
     @State private var showConfetti = false
     @State private var confettiID = UUID()
     @State private var flipCount = 0
-    @AppStorage(Self.highScoreKey) private var highScore: Int = 0
     @State private var gameCenterError: String?
+    @State private var gameCenterBest: Int? // Only track GC best in-memory for display
 
     static func generateCards() -> [Card] {
         let chosen = allImages.shuffled().prefix(12)
@@ -240,16 +237,37 @@ struct ContentView: View {
 
     func checkForWin() {
         if cards.allSatisfy({ $0.solved }) {
-            // Update high score if it's 0 (never played) or if this game is better
-            if highScore == 0 || flipCount < highScore {
-                highScore = flipCount
-                // Submit new high score to Game Center
-                reportScore(highScore, toLeaderboard: Self.leaderboardID)
-            }
-            confettiID = UUID()
-            showConfetti = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                showConfetti = false
+            // Always fetch latest GC score, then decide to submit
+            loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { gcScore in
+                let newScore = flipCount
+                let shouldSubmit: Bool
+                if let gcScore = gcScore {
+                    // Lower flips is better
+                    shouldSubmit = newScore < gcScore
+                } else {
+                    // No GC score yet, submit ours
+                    shouldSubmit = true
+                }
+
+                if shouldSubmit {
+                    reportScore(newScore, toLeaderboard: Self.leaderboardID)
+                }
+
+                // Update the in-memory display of GC best
+                DispatchQueue.main.async {
+                    if let gcScore = gcScore {
+                        gameCenterBest = min(gcScore, newScore)
+                    } else {
+                        gameCenterBest = newScore
+                    }
+
+                    // Confetti feedback
+                    confettiID = UUID()
+                    showConfetti = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        showConfetti = false
+                    }
+                }
             }
         }
     }
@@ -264,11 +282,7 @@ struct ContentView: View {
     func refreshHighScoreFromGameCenter() {
         loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { score in
             DispatchQueue.main.async {
-                if let score = score {
-                    if highScore == 0 || score < highScore {
-                        highScore = score
-                    }
-                }
+                gameCenterBest = score
             }
         }
     }
@@ -281,9 +295,15 @@ struct ContentView: View {
                         Text("Flips: \(flipCount)")
                             .font(.headline)
                             .foregroundColor(.blue)
-                        Text(highScore == 0 ? "Best: --" : "Best: \(highScore)")
-                            .font(.headline)
-                            .foregroundColor(.green)
+                        Text({
+                            if let best = gameCenterBest {
+                                return "GC Best: \(best)"
+                            } else {
+                                return "GC Best: --"
+                            }
+                        }())
+                        .font(.headline)
+                        .foregroundColor(.green)
                         Button(action: {
                             refreshHighScoreFromGameCenter()
                         }) {
