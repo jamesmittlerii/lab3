@@ -221,6 +221,7 @@ struct ContentView: View {
     @State private var gameCenterError: String?
     @State private var gameCenterBest: Int? // Only track GC best in-memory for display
     @State private var showingLeaderboard = false
+    @State private var isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
 
     static func generateCards() -> [Card] {
         let chosen = allImages.shuffled().prefix(12)
@@ -265,27 +266,18 @@ struct ContentView: View {
 
     func checkForWin() {
         if cards.allSatisfy({ $0.solved }) {
-            // Fetch global lowest GC score, then decide to submit
+            let newScore = flipCount
+
+            // Always report the score, regardless of current global best.
+            reportScore(newScore, toLeaderboard: Self.leaderboardID)
+
+            // Optionally refresh best for display only.
             loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { globalLowest in
-                let newScore = flipCount
-                let shouldSubmit: Bool
-                if let globalLowest = globalLowest {
-                    // Lower flips is better
-                    shouldSubmit = newScore < globalLowest
-                } else {
-                    // No GC score yet, submit ours
-                    shouldSubmit = true
-                }
-
-                if shouldSubmit {
-                    reportScore(newScore, toLeaderboard: Self.leaderboardID)
-                }
-
-                // Update the in-memory display of GC best (lowest globally including ours if better)
                 DispatchQueue.main.async {
                     if let globalLowest = globalLowest {
                         gameCenterBest = min(globalLowest, newScore)
                     } else {
+                        // If leaderboard empty/unavailable, show our score as best for now.
                         gameCenterBest = newScore
                     }
 
@@ -325,14 +317,30 @@ struct ContentView: View {
                         .font(.headline)
                         .foregroundColor(.green)
 
+                        // New Game icon button
                         Button {
-                            showingLeaderboard = true
+                            resetGame()
+                        } label: {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .foregroundColor(.blue)
+                                .accessibilityLabel("New Game")
+                        }
+                        .help("Start a new game")
+
+                        // Leaderboard icon button
+                        Button {
+                            if isGCAuthenticated {
+                                showingLeaderboard = true
+                            } else {
+                                gameCenterError = "Please sign in to Game Center to view the leaderboard."
+                            }
                         } label: {
                             Label("Leaderboard", systemImage: "trophy")
-                                .labelStyle(.iconOnly) // change to .titleAndIcon if you want text
-                                .foregroundColor(.orange)
+                                .labelStyle(.iconOnly)
+                                .foregroundColor(isGCAuthenticated ? .orange : .gray)
                                 .accessibilityLabel("Show Leaderboard")
                         }
+                        .disabled(!isGCAuthenticated)
                         .help("Show global leaderboard")
                     }
                     .padding(.top, 12)
@@ -340,22 +348,17 @@ struct ContentView: View {
                     // Always 4 columns; increase vertical spacing between rows
                     let columns = Array(repeating: GridItem(.flexible(), spacing: 1), count: 4)
 
-                    LazyVGrid(columns: columns, spacing: 12) { // row spacing = 12
+                    LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(cards.indices, id: \.self) { idx in
                             TileCards(card: cards[idx]) {
                                 handleTap(on: idx)
                             }
                             .aspectRatio(1, contentMode: .fit)
-                            .padding(.vertical, 4) // optional extra separation
+                            .padding(.vertical, 4)
                         }
                     }
 
-                    Button("New Game") {
-                        resetGame()
-                    }
-                    .padding()
-                    .background(Color.blue.opacity(0.2))
-                    .cornerRadius(8)
+                    // Removed the separate "New Game" button from here
                 }
             }
             if showConfetti {
@@ -369,7 +372,7 @@ struct ContentView: View {
             if let gameCenterError = gameCenterError {
                 VStack {
                     Spacer()
-                    Text("Game Center Error: \(gameCenterError)")
+                    Text("Game Center: \(gameCenterError)")
                         .foregroundColor(.red)
                         .padding()
                 }
@@ -383,14 +386,19 @@ struct ContentView: View {
             authenticateGameCenter { error in
                 if let error = error {
                     self.gameCenterError = error.localizedDescription
+                    self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
                 } else {
+                    self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
                     // Automatically fetch high score from Game Center after successful auth
-                    loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { score in
-                        DispatchQueue.main.async {
-                            gameCenterBest = score
+                    if self.isGCAuthenticated {
+                        loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { score in
+                            DispatchQueue.main.async {
+                                gameCenterBest = score
+                            }
                         }
                     }
                 }
+                print("GC isAuthenticated:", GKLocalPlayer.local.isAuthenticated)
             }
         }
     }
