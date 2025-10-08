@@ -183,6 +183,33 @@ func loadHighScoreFromGameCenter(leaderboardID: String, completion: @escaping (I
     }
 }
 
+// SwiftUI wrapper for GKGameCenterViewController
+struct GameCenterView: UIViewControllerRepresentable {
+    let leaderboardID: String
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> GKGameCenterViewController {
+        let vc = GKGameCenterViewController(leaderboardID: leaderboardID, playerScope: .global, timeScope: .allTime)
+        vc.gameCenterDelegate = context.coordinator
+        // vc.viewState is deprecated since iOS 14; the initializer above already targets leaderboards.
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: GKGameCenterViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(dismiss: dismiss)
+    }
+
+    class Coordinator: NSObject, GKGameCenterControllerDelegate {
+        let dismiss: DismissAction
+        init(dismiss: DismissAction) { self.dismiss = dismiss }
+        func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
+            dismiss()
+        }
+    }
+}
+
 struct ContentView: View {
     private static let leaderboardID = "KingOfTheHill" // <-- Set your real leaderboard ID here
 
@@ -193,6 +220,7 @@ struct ContentView: View {
     @State private var flipCount = 0
     @State private var gameCenterError: String?
     @State private var gameCenterBest: Int? // Only track GC best in-memory for display
+    @State private var showingLeaderboard = false
 
     static func generateCards() -> [Card] {
         let chosen = allImages.shuffled().prefix(12)
@@ -279,14 +307,6 @@ struct ContentView: View {
         flipCount = 0
     }
 
-    func refreshHighScoreFromGameCenter() {
-        loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { score in
-            DispatchQueue.main.async {
-                gameCenterBest = score
-            }
-        }
-    }
-
     var body: some View {
         ZStack {
             ScrollView {
@@ -304,13 +324,16 @@ struct ContentView: View {
                         }())
                         .font(.headline)
                         .foregroundColor(.green)
-                        Button(action: {
-                            refreshHighScoreFromGameCenter()
-                        }) {
-                            Image(systemName: "arrow.clockwise")
-                                .foregroundColor(.gray)
+
+                        Button {
+                            showingLeaderboard = true
+                        } label: {
+                            Label("Leaderboard", systemImage: "trophy")
+                                .labelStyle(.iconOnly) // change to .titleAndIcon if you want text
+                                .foregroundColor(.orange)
+                                .accessibilityLabel("Show Leaderboard")
                         }
-                        .help("Refresh high score from Game Center")
+                        .help("Show global leaderboard")
                     }
                     .padding(.top, 12)
 
@@ -352,13 +375,21 @@ struct ContentView: View {
                 }
             }
         }
+        .sheet(isPresented: $showingLeaderboard) {
+            GameCenterView(leaderboardID: Self.leaderboardID)
+        }
         .animation(.default, value: showConfetti)
         .onAppear {
             authenticateGameCenter { error in
                 if let error = error {
                     self.gameCenterError = error.localizedDescription
                 } else {
-                    refreshHighScoreFromGameCenter()
+                    // Automatically fetch high score from Game Center after successful auth
+                    loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { score in
+                        DispatchQueue.main.async {
+                            gameCenterBest = score
+                        }
+                    }
                 }
             }
         }
