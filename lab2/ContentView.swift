@@ -291,15 +291,15 @@ struct ContentView: View {
         ZStack {
             ScrollView {
                 VStack(spacing: 8) {
-                    HStack(spacing: 30) {
+                    HStack(spacing: 8) {
                         Text("Flips: \(flipCount)")
                             .font(.headline)
                             .foregroundColor(.blue)
                         Text({
                             if let best = gameCenterBest {
-                                return "GC Best: \(best)"
+                                return "High Score: \(best)"
                             } else {
-                                return "GC Best: --"
+                                return "High Score: --"
                             }
                         }())
                         .font(.headline)
@@ -314,15 +314,19 @@ struct ContentView: View {
                     }
                     .padding(.top, 12)
 
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 1)]) {
+                    // Always 4 columns; increase vertical spacing between rows
+                    let columns = Array(repeating: GridItem(.flexible(), spacing: 1), count: 4)
+
+                    LazyVGrid(columns: columns, spacing: 12) { // row spacing = 12
                         ForEach(cards.indices, id: \.self) { idx in
                             TileCards(card: cards[idx]) {
                                 handleTap(on: idx)
                             }
                             .aspectRatio(1, contentMode: .fit)
+                            .padding(.vertical, 4) // optional extra separation
                         }
                     }
-                    
+
                     Button("New Game") {
                         resetGame()
                     }
