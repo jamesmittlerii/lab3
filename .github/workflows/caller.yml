@@ -7,7 +7,7 @@ permissions:
 
 on:
   push:
-    branches: [ "**" ]
+    branches: [ "working" ]
   pull_request:
     branches: [ "main" ]
 
