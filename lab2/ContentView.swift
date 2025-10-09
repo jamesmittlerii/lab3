@@ -422,87 +422,72 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geo in
             // Common layout spacing values used below
-            let horizontalPadding: CGFloat = 16  // approx from your padding(.horizontal)
-            let interItemSpacing: CGFloat = 12
-            let rows: Int = 6
-            let cols: Int = 4
+            let baseHorizontalPadding: CGFloat = 16
+            let baseInterItemSpacing: CGFloat = 12
+            let rows = 6
+            let cols = 4
 
-            // Header estimated height (one line of text + buttons)
-            // We can measure dynamically, but a safe estimate works well.
-            let estimatedHeaderHeight: CGFloat = 44 + 12  // content + top padding
+            // Compact-width (iPhone) tweaks: tighten margins/gaps to maximize tile size
+            let isCompact = (hSizeClass == .compact)
+            let horizontalPadding: CGFloat = isCompact ? 4 : baseHorizontalPadding
+            let tightSpacing: CGFloat = isCompact ? 1 : baseInterItemSpacing
 
-            // Compute available width/height for the grid area
-            let availableWidth = geo.size.width - horizontalPadding * 2
-            let availableHeight =
-                geo.size.height
-                - estimatedHeaderHeight
-                - 24  // some bottom padding safety
+            // Estimate header height; use a smaller estimate on iPhone to give tiles more room
+            let estimatedHeaderHeight: CGFloat = isCompact ? 36 : (44 + 12)
 
-            // Compute tile size to fit 4x6 with given inter-item spacing
-            // width-based size:
-            let tileWidth =
-                (availableWidth - interItemSpacing * CGFloat(cols - 1))
-                / CGFloat(cols)
-            // height-based size:
-            let tileHeight =
-                (availableHeight - interItemSpacing * CGFloat(rows - 1))
-                / CGFloat(rows)
-            let tileSize = max(0, min(tileWidth, tileHeight))
+            // Available grid area
+            let availableWidth = max(0, geo.size.width - horizontalPadding * 2)
+            let availableHeight = max(0, geo.size.height - estimatedHeaderHeight - 16) // slightly smaller bottom safety on iPhone
 
+            // Compute both width-limited and height-limited square tile sizes
+            let widthLimitedTile =
+                (availableWidth - tightSpacing * CGFloat(cols - 1)) / CGFloat(cols)
+            let heightLimitedTile =
+                (availableHeight - tightSpacing * CGFloat(rows - 1)) / CGFloat(rows)
+
+            // Choose the smaller so the grid always fits
+            let tileSize = max(0, min(widthLimitedTile, heightLimitedTile))
+
+            // Determine if width or height is the limiting factor
+            let widthIsLimiter = widthLimitedTile <= heightLimitedTile + .ulpOfOne
+
+            // Use tight spacing on iPhone; keep base spacing on iPad-like widths
+            let columnSpacing = tightSpacing
+            // Optionally, add any remaining vertical space (when width is the limiter) into row spacing
+            let tilesTotalHeight = tileSize * CGFloat(rows)
+            let leftoverHeight = max(0, availableHeight - tilesTotalHeight)
+            let extraPerGap = (widthIsLimiter && rows > 1) ? leftoverHeight / CGFloat(rows - 1) : 0
+            let rowSpacing = tightSpacing + extraPerGap
+
+            // Grid definition: 4 fixed columns with (possibly) tighter horizontal spacing
             let columns: [GridItem] = Array(
-                repeating: GridItem(
-                    .fixed(tileSize),
-                    spacing: interItemSpacing
-                ),
+                repeating: GridItem(.fixed(tileSize), spacing: columnSpacing),
                 count: cols
             )
 
-            let grid = LazyVGrid(columns: columns, spacing: interItemSpacing) {
-                ForEach(cards.indices, id: \.self) { idx in
-                    TileCards(card: cards[idx]) {
-                        handleTap(on: idx)
-                    }
-                    .frame(width: tileSize, height: tileSize)
-                    .padding(.vertical, 0)
-                }
-            }
+            // Total grid height: tiles + (rows - 1) gaps using the computed row spacing
+            let gridHeight = max(0, tilesTotalHeight + rowSpacing * CGFloat(rows - 1))
 
             ZStack {
-                if isPadLayout {
-                    // No scrolling on iPad layout; ensure everything fits
-                    VStack(spacing: 8) {
-                        headerView()
-                        grid
-                            .frame(
-                                width: availableWidth,
-                                height: tileSize * CGFloat(rows)
-                                    + interItemSpacing * CGFloat(rows - 1)
-                            )
-                            .padding(.horizontal, horizontalPadding)
-                        Spacer(minLength: 0)
-                    }
-                } else {
-                    // Original scrolling layout for iPhone/compact
-                    ScrollView {
-                        VStack(spacing: 8) {
-                            headerView()
-                            // Use flexible columns and spacing as before
-                            let phoneColumns = Array(
-                                repeating: GridItem(.flexible(), spacing: 1),
-                                count: 4
-                            )
-                            LazyVGrid(columns: phoneColumns, spacing: 12) {
-                                ForEach(cards.indices, id: \.self) { idx in
-                                    TileCards(card: cards[idx]) {
-                                        handleTap(on: idx)
-                                    }
-                                    .aspectRatio(1, contentMode: .fit)
-                                    .padding(.vertical, 4)
-                                }
+                VStack(spacing: 8) {
+                    headerView()
+
+                    // Grid with tighter spacing and reduced side padding on iPhone
+                    LazyVGrid(columns: columns, spacing: rowSpacing) {
+                        ForEach(cards.indices, id: \.self) { idx in
+                            TileCards(card: cards[idx])
+                            {
+                                handleTap(on: idx)
                             }
+                            .frame(width: tileSize, height: tileSize)
                         }
                     }
+                    .frame(width: max(0, availableWidth), height: gridHeight)
+                    .padding(.horizontal, horizontalPadding)
+
+                    Spacer(minLength: 0)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
                 if showConfetti {
                     ConfettiView()
