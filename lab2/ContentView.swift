@@ -268,6 +268,8 @@ struct GameCenterView: UIViewControllerRepresentable {
 struct ContentView: View {
     private static let leaderboardID = "KingOfTheHill"  // <-- Set your real leaderboard ID here
 
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+
     @State private var cards: [Card] = ContentView.generateCards()
     @State private var indicesOfFaceUp: [Int] = []
     @State private var showConfetti = false
@@ -278,10 +280,65 @@ struct ContentView: View {
     @State private var showingLeaderboard = false
     @State private var isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
 
+    private var isPadLayout: Bool {
+        // Prefer size class, fallback to idiom
+        if let hSizeClass, hSizeClass == .regular { return true }
+        return UIDevice.current.userInterfaceIdiom == .pad
+    }
+
     static func generateCards() -> [Card] {
         let chosen = allImages.shuffled().prefix(12)
         let pairs = Array(chosen) + Array(chosen)
         return pairs.shuffled().map { Card(content: $0) }
+    }
+
+    // Header view extracted so we can measure remaining height
+    @ViewBuilder
+    private func headerView() -> some View {
+        HStack(spacing: 8) {
+            Text("Flips: \(flipCount)")
+                .font(.headline)
+                .foregroundColor(.blue)
+            Text(
+                {
+                    if let best = gameCenterBest {
+                        return "High Score: \(best)"
+                    } else {
+                        return "High Score: --"
+                    }
+                }()
+            )
+            .font(.headline)
+            .foregroundColor(.green)
+
+            Button {
+                resetGame()
+            } label: {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .foregroundColor(.blue)
+                    .accessibilityLabel("New Game")
+            }
+            .help("Start a new game")
+
+            Button {
+                if isGCAuthenticated {
+                    showingLeaderboard = true
+                } else {
+                    gameCenterError =
+                        "Please sign in to Game Center to view the leaderboard."
+                }
+            } label: {
+                Label("Leaderboard", systemImage: "trophy")
+                    .labelStyle(.iconOnly)
+                    .foregroundColor(
+                        isGCAuthenticated ? .orange : .gray
+                    )
+                    .accessibilityLabel("Show Leaderboard")
+            }
+            .disabled(!isGCAuthenticated)
+            .help("Show global leaderboard")
+        }
+        .padding(.top, 12)
     }
 
     func handleTap(on index: Int) {
@@ -363,89 +420,105 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack {
-            ScrollView {
-                VStack(spacing: 8) {
-                    HStack(spacing: 8) {
-                        Text("Flips: \(flipCount)")
-                            .font(.headline)
-                            .foregroundColor(.blue)
-                        Text(
-                            {
-                                if let best = gameCenterBest {
-                                    return "High Score: \(best)"
-                                } else {
-                                    return "High Score: --"
-                                }
-                            }()
-                        )
-                        .font(.headline)
-                        .foregroundColor(.green)
+        GeometryReader { geo in
+            // Common layout spacing values used below
+            let horizontalPadding: CGFloat = 16  // approx from your padding(.horizontal)
+            let interItemSpacing: CGFloat = 12
+            let rows: Int = 6
+            let cols: Int = 4
 
-                        // New Game icon button
-                        Button {
-                            resetGame()
-                        } label: {
-                            Image(systemName: "arrow.triangle.2.circlepath")
-                                .foregroundColor(.blue)
-                                .accessibilityLabel("New Game")
-                        }
-                        .help("Start a new game")
+            // Header estimated height (one line of text + buttons)
+            // We can measure dynamically, but a safe estimate works well.
+            let estimatedHeaderHeight: CGFloat = 44 + 12  // content + top padding
 
-                        // Leaderboard icon button
-                        Button {
-                            if isGCAuthenticated {
-                                showingLeaderboard = true
-                            } else {
-                                gameCenterError =
-                                    "Please sign in to Game Center to view the leaderboard."
-                            }
-                        } label: {
-                            Label("Leaderboard", systemImage: "trophy")
-                                .labelStyle(.iconOnly)
-                                .foregroundColor(
-                                    isGCAuthenticated ? .orange : .gray
-                                )
-                                .accessibilityLabel("Show Leaderboard")
-                        }
-                        .disabled(!isGCAuthenticated)
-                        .help("Show global leaderboard")
+            // Compute available width/height for the grid area
+            let availableWidth = geo.size.width - horizontalPadding * 2
+            let availableHeight =
+                geo.size.height
+                - estimatedHeaderHeight
+                - 24  // some bottom padding safety
+
+            // Compute tile size to fit 4x6 with given inter-item spacing
+            // width-based size:
+            let tileWidth =
+                (availableWidth - interItemSpacing * CGFloat(cols - 1))
+                / CGFloat(cols)
+            // height-based size:
+            let tileHeight =
+                (availableHeight - interItemSpacing * CGFloat(rows - 1))
+                / CGFloat(rows)
+            let tileSize = max(0, min(tileWidth, tileHeight))
+
+            let columns: [GridItem] = Array(
+                repeating: GridItem(
+                    .fixed(tileSize),
+                    spacing: interItemSpacing
+                ),
+                count: cols
+            )
+
+            let grid = LazyVGrid(columns: columns, spacing: interItemSpacing) {
+                ForEach(cards.indices, id: \.self) { idx in
+                    TileCards(card: cards[idx]) {
+                        handleTap(on: idx)
                     }
-                    .padding(.top, 12)
-
-                    // Always 4 columns; increase vertical spacing between rows
-                    let columns = Array(
-                        repeating: GridItem(.flexible(), spacing: 1),
-                        count: 4
-                    )
-
-                    LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(cards.indices, id: \.self) { idx in
-                            TileCards(card: cards[idx]) {
-                                handleTap(on: idx)
-                            }
-                            .aspectRatio(1, contentMode: .fit)
-                            .padding(.vertical, 4)
-                        }
-                    }
-
-                    // Removed the separate "New Game" button from here
+                    .frame(width: tileSize, height: tileSize)
+                    .padding(.vertical, 0)
                 }
             }
-            if showConfetti {
-                ConfettiView()
-                    .id(confettiID)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .transition(.opacity)
-                    .zIndex(1)
-            }
-            // Optional: Show Game Center error alert
-            if let gameCenterError = gameCenterError {
-                VStack {
-                    Spacer()
-                    Text("Game Center: \(gameCenterError)")
-                        .foregroundColor(.red)
-                        .padding()
+
+            ZStack {
+                if isPadLayout {
+                    // No scrolling on iPad layout; ensure everything fits
+                    VStack(spacing: 8) {
+                        headerView()
+                        grid
+                            .frame(
+                                width: availableWidth,
+                                height: tileSize * CGFloat(rows)
+                                    + interItemSpacing * CGFloat(rows - 1)
+                            )
+                            .padding(.horizontal, horizontalPadding)
+                        Spacer(minLength: 0)
+                    }
+                } else {
+                    // Original scrolling layout for iPhone/compact
+                    ScrollView {
+                        VStack(spacing: 8) {
+                            headerView()
+                            // Use flexible columns and spacing as before
+                            let phoneColumns = Array(
+                                repeating: GridItem(.flexible(), spacing: 1),
+                                count: 4
+                            )
+                            LazyVGrid(columns: phoneColumns, spacing: 12) {
+                                ForEach(cards.indices, id: \.self) { idx in
+                                    TileCards(card: cards[idx]) {
+                                        handleTap(on: idx)
+                                    }
+                                    .aspectRatio(1, contentMode: .fit)
+                                    .padding(.vertical, 4)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if showConfetti {
+                    ConfettiView()
+                        .id(confettiID)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .transition(.opacity)
+                        .zIndex(1)
+                }
+
+                if let gameCenterError = gameCenterError {
+                    VStack {
+                        Spacer()
+                        Text("Game Center: \(gameCenterError)")
+                            .foregroundColor(.red)
+                            .padding()
+                    }
                 }
             }
         }
