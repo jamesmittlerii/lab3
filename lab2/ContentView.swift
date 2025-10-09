@@ -7,6 +7,7 @@
 
 import SwiftUI
 import GameKit
+import AudioToolbox
 
 let allImages = ["Man1","Man2","Man3","Man4","Man5","Man6","Man7","Man8","Man9","Sou1","Sou2","Sou3","Sou4","Sou5","Sou6","Sou7","Sou8","Sou9"]
 
@@ -148,8 +149,14 @@ func reportScore(_ score: Int, toLeaderboard leaderboardID: String) {
     }
 }
 
-// Load the lowest score globally from Game Center (ascending leaderboard)
+// Load the current player's personal best (lowest) score from Game Center
 func loadHighScoreFromGameCenter(leaderboardID: String, completion: @escaping (Int?) -> Void) {
+    // Ensure the local player is authenticated
+    guard GKLocalPlayer.local.isAuthenticated else {
+        completion(nil)
+        return
+    }
+
     GKLeaderboard.loadLeaderboards(IDs: [leaderboardID]) { leaderboards, error in
         if let error = error {
             print("Error loading leaderboard: \(error.localizedDescription)")
@@ -162,25 +169,41 @@ func loadHighScoreFromGameCenter(leaderboardID: String, completion: @escaping (I
             return
         }
 
-        // Since the leaderboard is configured as "lower is better",
-        // the top global entry (range 1..1) is the lowest score.
+        // Request entries; we only care about the localPlayerEntry in the callback.
         leaderboard.loadEntries(
             for: .global,
             timeScope: .allTime,
             range: NSRange(location: 1, length: 1)
-        ) { _, entries, _, error in
+        ) { localPlayerEntry, _, _, error in
             if let error = error {
-                print("Error loading entries: \(error.localizedDescription)")
+                print("Error loading local player entry: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
-            guard let first = entries?.first else {
+            guard let local = localPlayerEntry else {
+                // No score submitted yet by this player
                 completion(nil)
                 return
             }
-            completion(Int(first.score))
+            completion(Int(local.score))
         }
     }
+}
+
+// Simple haptic helpers
+private func playMatchHaptic() {
+    let generator = UINotificationFeedbackGenerator()
+    generator.notificationOccurred(.success)
+}
+
+private func playMismatchHaptic() {
+    let generator = UINotificationFeedbackGenerator()
+    generator.notificationOccurred(.warning)
+}
+
+// Win sound helper (System Sound 1322 "Bloom")
+private func playWinSound() {
+    AudioServicesPlaySystemSound(1322)
 }
 
 // SwiftUI wrapper for GKGameCenterViewController
@@ -250,6 +273,8 @@ struct ContentView: View {
                     newCards[secondIdx].solved = true
                     cards = newCards
                     indicesOfFaceUp = []
+                    // Haptic for match
+                    playMatchHaptic()
                     checkForWin()
                 }
             } else {
@@ -259,6 +284,8 @@ struct ContentView: View {
                     newCards[secondIdx].isFaceUp = false
                     cards = newCards
                     indicesOfFaceUp = []
+                    // Optional: subtle haptic to indicate mismatch
+                    playMismatchHaptic()
                 }
             }
         }
@@ -271,19 +298,20 @@ struct ContentView: View {
             // Always report the score, regardless of current global best.
             reportScore(newScore, toLeaderboard: Self.leaderboardID)
 
-            // Optionally refresh best for display only.
-            loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { globalLowest in
+            // Refresh personal best for display only.
+            loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { personalBest in
                 DispatchQueue.main.async {
-                    if let globalLowest = globalLowest {
-                        gameCenterBest = min(globalLowest, newScore)
+                    if let personalBest = personalBest {
+                        gameCenterBest = min(personalBest, newScore)
                     } else {
-                        // If leaderboard empty/unavailable, show our score as best for now.
+                        // If no previous score, show our score as best for now.
                         gameCenterBest = newScore
                     }
 
-                    // Confetti feedback
+                    // Confetti feedback + win sound
                     confettiID = UUID()
                     showConfetti = true
+                    playWinSound()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                         showConfetti = false
                     }
@@ -389,7 +417,7 @@ struct ContentView: View {
                     self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
                 } else {
                     self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
-                    // Automatically fetch high score from Game Center after successful auth
+                    // Automatically fetch personal best from Game Center after successful auth
                     if self.isGCAuthenticated {
                         loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { score in
                             DispatchQueue.main.async {
