@@ -5,11 +5,15 @@
 //  Created by cisstudent on 10/7/25.
 //
 
-import SwiftUI
-import GameKit
 import AudioToolbox
+import GameKit
+import SwiftUI
 
-let allImages = ["Man1","Man2","Man3","Man4","Man5","Man6","Man7","Man8","Man9","Sou1","Sou2","Sou3","Sou4","Sou5","Sou6","Sou7","Sou8","Sou9"]
+let allImages = [
+    "Man1", "Man2", "Man3", "Man4", "Man5", "Man6", "Man7", "Man8", "Man9",
+    "Sou1", "Sou2", "Sou3", "Sou4", "Sou5", "Sou6", "Sou7", "Sou8", "Sou9",
+    "Pin1", "Pin2", "Pin3", "Pin4", "Pin5", "Pin6", "Pin7", "Pin8", "Pin9",
+]
 
 struct Card: Identifiable {
     let id = UUID()
@@ -53,7 +57,9 @@ struct ConfettiParticle: Identifiable {
 
 struct ConfettiView: View {
     @State private var confetti = [ConfettiParticle]()
-    let colors: [Color] = [.red, .blue, .green, .orange, .purple, .pink, .yellow]
+    let colors: [Color] = [
+        .red, .blue, .green, .orange, .purple, .pink, .yellow,
+    ]
 
     var body: some View {
         GeometryReader { geo in
@@ -64,7 +70,10 @@ struct ConfettiView: View {
                         .frame(width: particle.size, height: particle.size)
                         .position(x: particle.x, y: particle.y)
                         .opacity(particle.opacity)
-                        .animation(.easeOut(duration: particle.duration), value: particle.y)
+                        .animation(
+                            .easeOut(duration: particle.duration),
+                            value: particle.y
+                        )
                 }
             }
             .onAppear {
@@ -99,11 +108,13 @@ private func currentRootViewController() -> UIViewController? {
     // Prefer key window; otherwise first window
     for scene in scenes {
         if let keyWindow = scene.windows.first(where: { $0.isKeyWindow }),
-           let root = keyWindow.rootViewController {
+            let root = keyWindow.rootViewController
+        {
             return root
         }
         if let anyWindow = scene.windows.first,
-           let root = anyWindow.rootViewController {
+            let root = anyWindow.rootViewController
+        {
             return root
         }
     }
@@ -119,13 +130,17 @@ func authenticateGameCenter(completion: ((Error?) -> Void)? = nil) {
                 rootVC.present(vc, animated: true)
             } else {
                 // As a fallback, try to find a top-most controller to present from
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let window = windowScene.windows.first,
-                   let root = window.rootViewController {
+                if let windowScene = UIApplication.shared.connectedScenes.first
+                    as? UIWindowScene,
+                    let window = windowScene.windows.first,
+                    let root = window.rootViewController
+                {
                     root.present(vc, animated: true)
                 } else {
                     // Could not find a presentation anchor
-                    print("Game Center: Unable to find a rootViewController to present authentication UI.")
+                    print(
+                        "Game Center: Unable to find a rootViewController to present authentication UI."
+                    )
                 }
             }
         }
@@ -150,14 +165,19 @@ func reportScore(_ score: Int, toLeaderboard leaderboardID: String) {
 }
 
 // Load the current player's personal best (lowest) score from Game Center
-func loadHighScoreFromGameCenter(leaderboardID: String, completion: @escaping (Int?) -> Void) {
+func loadHighScoreFromGameCenter(
+    leaderboardID: String,
+    completion: @escaping (Int?) -> Void
+) {
     // Ensure the local player is authenticated
     guard GKLocalPlayer.local.isAuthenticated else {
         completion(nil)
         return
     }
 
-    GKLeaderboard.loadLeaderboards(IDs: [leaderboardID]) { leaderboards, error in
+    GKLeaderboard.loadLeaderboards(IDs: [leaderboardID]) {
+        leaderboards,
+        error in
         if let error = error {
             print("Error loading leaderboard: \(error.localizedDescription)")
             completion(nil)
@@ -176,7 +196,9 @@ func loadHighScoreFromGameCenter(leaderboardID: String, completion: @escaping (I
             range: NSRange(location: 1, length: 1)
         ) { localPlayerEntry, _, _, error in
             if let error = error {
-                print("Error loading local player entry: \(error.localizedDescription)")
+                print(
+                    "Error loading local player entry: \(error.localizedDescription)"
+                )
                 completion(nil)
                 return
             }
@@ -212,13 +234,20 @@ struct GameCenterView: UIViewControllerRepresentable {
     @Environment(\.dismiss) private var dismiss
 
     func makeUIViewController(context: Context) -> GKGameCenterViewController {
-        let vc = GKGameCenterViewController(leaderboardID: leaderboardID, playerScope: .global, timeScope: .allTime)
+        let vc = GKGameCenterViewController(
+            leaderboardID: leaderboardID,
+            playerScope: .global,
+            timeScope: .allTime
+        )
         vc.gameCenterDelegate = context.coordinator
         // vc.viewState is deprecated since iOS 14; the initializer above already targets leaderboards.
         return vc
     }
 
-    func updateUIViewController(_ uiViewController: GKGameCenterViewController, context: Context) {}
+    func updateUIViewController(
+        _ uiViewController: GKGameCenterViewController,
+        context: Context
+    ) {}
 
     func makeCoordinator() -> Coordinator {
         Coordinator(dismiss: dismiss)
@@ -227,14 +256,16 @@ struct GameCenterView: UIViewControllerRepresentable {
     class Coordinator: NSObject, GKGameCenterControllerDelegate {
         let dismiss: DismissAction
         init(dismiss: DismissAction) { self.dismiss = dismiss }
-        func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
+        func gameCenterViewControllerDidFinish(
+            _ gameCenterViewController: GKGameCenterViewController
+        ) {
             dismiss()
         }
     }
 }
 
 struct ContentView: View {
-    private static let leaderboardID = "KingOfTheHill" // <-- Set your real leaderboard ID here
+    private static let leaderboardID = "KingOfTheHill"  // <-- Set your real leaderboard ID here
 
     @State private var cards: [Card] = ContentView.generateCards()
     @State private var indicesOfFaceUp: [Int] = []
@@ -242,7 +273,7 @@ struct ContentView: View {
     @State private var confettiID = UUID()
     @State private var flipCount = 0
     @State private var gameCenterError: String?
-    @State private var gameCenterBest: Int? // Only track GC best in-memory for display
+    @State private var gameCenterBest: Int?  // Only track GC best in-memory for display
     @State private var showingLeaderboard = false
     @State private var isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
 
@@ -253,7 +284,9 @@ struct ContentView: View {
     }
 
     func handleTap(on index: Int) {
-        guard !cards[index].isFaceUp, !cards[index].solved, indicesOfFaceUp.count < 2 else { return }
+        guard !cards[index].isFaceUp, !cards[index].solved,
+            indicesOfFaceUp.count < 2
+        else { return }
 
         // Increment flip count for a valid flip
         flipCount += 1
@@ -299,7 +332,8 @@ struct ContentView: View {
             reportScore(newScore, toLeaderboard: Self.leaderboardID)
 
             // Refresh personal best for display only.
-            loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { personalBest in
+            loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) {
+                personalBest in
                 DispatchQueue.main.async {
                     if let personalBest = personalBest {
                         gameCenterBest = min(personalBest, newScore)
@@ -335,13 +369,15 @@ struct ContentView: View {
                         Text("Flips: \(flipCount)")
                             .font(.headline)
                             .foregroundColor(.blue)
-                        Text({
-                            if let best = gameCenterBest {
-                                return "High Score: \(best)"
-                            } else {
-                                return "High Score: --"
-                            }
-                        }())
+                        Text(
+                            {
+                                if let best = gameCenterBest {
+                                    return "High Score: \(best)"
+                                } else {
+                                    return "High Score: --"
+                                }
+                            }()
+                        )
                         .font(.headline)
                         .foregroundColor(.green)
 
@@ -360,12 +396,15 @@ struct ContentView: View {
                             if isGCAuthenticated {
                                 showingLeaderboard = true
                             } else {
-                                gameCenterError = "Please sign in to Game Center to view the leaderboard."
+                                gameCenterError =
+                                    "Please sign in to Game Center to view the leaderboard."
                             }
                         } label: {
                             Label("Leaderboard", systemImage: "trophy")
                                 .labelStyle(.iconOnly)
-                                .foregroundColor(isGCAuthenticated ? .orange : .gray)
+                                .foregroundColor(
+                                    isGCAuthenticated ? .orange : .gray
+                                )
                                 .accessibilityLabel("Show Leaderboard")
                         }
                         .disabled(!isGCAuthenticated)
@@ -374,7 +413,10 @@ struct ContentView: View {
                     .padding(.top, 12)
 
                     // Always 4 columns; increase vertical spacing between rows
-                    let columns = Array(repeating: GridItem(.flexible(), spacing: 1), count: 4)
+                    let columns = Array(
+                        repeating: GridItem(.flexible(), spacing: 1),
+                        count: 4
+                    )
 
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(cards.indices, id: \.self) { idx in
@@ -419,14 +461,19 @@ struct ContentView: View {
                     self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
                     // Automatically fetch personal best from Game Center after successful auth
                     if self.isGCAuthenticated {
-                        loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) { score in
+                        loadHighScoreFromGameCenter(
+                            leaderboardID: Self.leaderboardID
+                        ) { score in
                             DispatchQueue.main.async {
                                 gameCenterBest = score
                             }
                         }
                     }
                 }
-                print("GC isAuthenticated:", GKLocalPlayer.local.isAuthenticated)
+                print(
+                    "GC isAuthenticated:",
+                    GKLocalPlayer.local.isAuthenticated
+                )
             }
         }
     }
