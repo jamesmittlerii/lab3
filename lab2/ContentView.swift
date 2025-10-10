@@ -148,7 +148,11 @@ struct ContentView: View {
 
     // tap a card and flip
     private func cardTapped(at index: Int) {
-        guard !cards[index].isFaceUp, !cards[index].solved, !gameCompleted else { return }
+        guard !cards[index].isFaceUp,
+                !cards[index].solved,
+              !gameCompleted,
+              firstSelectedIndex == nil || secondSelectedIndex == nil
+        else { return }
 
         tapsCount += 1
         cards[index].isFaceUp = true
