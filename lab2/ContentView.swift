@@ -1,9 +1,16 @@
-//
-//  ContentView.swift
-//  lab2
-//
-//  Created by cisstudent on 10/7/25.
-//
+/**
+ 
+ * Lab 2
+ * Dave Norvall and Jim Mittler
+ * 10 October 2025
+ 
+ Classic  Concentration Flip Game with Emojis
+ 
+ _Italic text_
+ __Bold text__
+ ~~Strikethrough text~~
+
+ */
 
 import SwiftUI
 
@@ -18,10 +25,15 @@ struct ContentView: View {
 
     var body: some View {
         VStack {
+            
+            // keep track of taps
+            
             Text("Current Taps: \(tapsCount)")
                 .font(.largeTitle)
                 .padding()
 
+            // if we haven't solved show the grid
+            
             if !gameCompleted {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 10) {
                     ForEach(0..<24, id: \.self) { index in
@@ -32,6 +44,7 @@ struct ContentView: View {
                 }
                 .padding()
             } else {
+                // ok - we won! show a summary
                 VStack {
                     Text("Game Completed!")
                         .font(.largeTitle)
@@ -79,13 +92,14 @@ struct ContentView: View {
     }
 
     private func setupGame() {
-        let values = ["🍎", "🍌", "🍒", "🍇", "🍉", "🍓", "⭐️", "💜", "🔶", "🌼", "⭐️", "🐶"]
+        let values = ["🍎", "🍌", "🍒", "🍇", "🍉", "🍓", "🍀", "💜", "🔶", "🌼", "⭐️", "🐶"]
         cardValues = (values + values).shuffled()
         cardStates = Array(repeating: false, count: 24)
         tapsCount = 0
         gameCompleted = false
     }
 
+    // tap a card and flip
     private func cardTapped(at index: Int) {
         guard !cardStates[index], !gameCompleted else { return }
 
@@ -99,12 +113,15 @@ struct ContentView: View {
             checkMatch()
         }
 
-        // Check if all cards are matched
+        // Check if all cards are matched; delay the completion UI by 1 second
         if cardStates.allSatisfy({ $0 }) {
-            gameCompleted = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                gameCompleted = true
+            }
         }
     }
 
+    // did we match?
     private func checkMatch() {
         guard let firstIndex = firstSelectedIndex, let secondIndex = secondSelectedIndex else { return }
 
@@ -125,6 +142,8 @@ struct ContentView: View {
         setupGame()
     }
 }
+
+// this is our card
 
 struct CardView: View {
     let title: String

@@ -1,9 +1,16 @@
-//
-//  lab2UITests.swift
-//  lab2UITests
-//
-//  Created by cisstudent on 10/7/25.
-//
+/**
+ 
+ * Lab 2
+ * Dave Norvall and Jim Mittler
+ * 10 October 2025
+ 
+ Classic  Concentration Flip Game with Emojis
+ 
+ _Italic text_
+ __Bold text__
+ ~~Strikethrough text~~
+
+ */
 
 import XCTest
 
