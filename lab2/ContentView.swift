@@ -14,15 +14,61 @@
 
 import SwiftUI
 
+let allImages: [String] = {
+    let suits = ["Man", "Sou", "Pin"]
+    return suits.flatMap { suit in
+        (1...9).map { "\(suit)\($0)" }
+    }
+}()
+
+struct Card: Identifiable {
+    let id = UUID()
+    let content: String
+    var isFaceUp: Bool = false
+    var solved: Bool = false
+}
+
+struct TileCards: View {
+    let card: Card
+    let onTap: () -> Void
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10)
+                .foregroundColor(.white)
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(lineWidth: 3).foregroundColor(.blue)
+            Image(card.content).resizable().scaledToFit().padding()
+            let cover = RoundedRectangle(cornerRadius: 10)
+                .foregroundColor(.blue)
+            cover.opacity(card.isFaceUp ? 0 : 1)
+        }
+        .padding(.horizontal)
+        .onTapGesture {
+            if !card.solved && !card.isFaceUp {
+                onTap()
+            }
+        }
+    }
+}
+
+
 struct ContentView: View {
-    @State private var cardValues: [String] = []
     @State private var firstSelectedIndex: Int?
     @State private var secondSelectedIndex: Int?
     @State private var tapsCount: Int = 0
-    @State private var cardStates: [Bool] = Array(repeating: false, count: 24)
     @State private var gameCompleted: Bool = false
     @State private var scoreHistory: [Int] = []
-
+    
+  
+    @State private var cards: [Card] = ContentView.generateCards()
+    
+    static func generateCards() -> [Card] {
+           let chosen = allImages.shuffled().prefix(12)
+           let pairs = Array(chosen) + Array(chosen)
+           return pairs.shuffled().map { Card(content: $0) }
+       }
+    
     var body: some View {
         VStack {
             
@@ -36,10 +82,11 @@ struct ContentView: View {
             
             if !gameCompleted {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 10) {
-                    ForEach(0..<24, id: \.self) { index in
-                        CardView(title: cardStates[index] ? cardValues[index] : "", action: {
+                    ForEach(cards.indices, id: \.self) { index in
+                        TileCards(card: cards[index])
+                        {
                             cardTapped(at: index)
-                        })
+                        }
                     }
                 }
                 .padding()
@@ -92,19 +139,19 @@ struct ContentView: View {
     }
 
     private func setupGame() {
-        let values = ["🍎", "🍌", "🍒", "🍇", "🍉", "🍓", "🍀", "💜", "🔶", "🌼", "⭐️", "🐶"]
-        cardValues = (values + values).shuffled()
-        cardStates = Array(repeating: false, count: 24)
         tapsCount = 0
         gameCompleted = false
+        cards = ContentView.generateCards()
+        firstSelectedIndex = nil
+        secondSelectedIndex = nil
     }
 
     // tap a card and flip
     private func cardTapped(at index: Int) {
-        guard !cardStates[index], !gameCompleted else { return }
+        guard !cards[index].isFaceUp, !cards[index].solved, !gameCompleted else { return }
 
         tapsCount += 1
-        cardStates[index] = true
+        cards[index].isFaceUp = true
 
         if firstSelectedIndex == nil {
             firstSelectedIndex = index
@@ -113,28 +160,33 @@ struct ContentView: View {
             checkMatch()
         }
 
-        // Check if all cards are matched; delay the completion UI by 1 second
-        if cardStates.allSatisfy({ $0 }) {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                gameCompleted = true
-            }
-        }
+        
     }
 
     // did we match?
     private func checkMatch() {
         guard let firstIndex = firstSelectedIndex, let secondIndex = secondSelectedIndex else { return }
 
-        if cardValues[firstIndex] != cardValues[secondIndex] {
+        if cards[firstIndex].content != cards[secondIndex].content {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                cardStates[firstIndex] = false
-                cardStates[secondIndex] = false
+                cards[firstIndex].isFaceUp = false
+                cards[secondIndex].isFaceUp = false
                 firstSelectedIndex = nil
                 secondSelectedIndex = nil
             }
         } else {
+            cards[firstIndex].solved = true
+            cards[secondIndex].solved = true
             firstSelectedIndex = nil
             secondSelectedIndex = nil
+            // Check if all cards are matched; delay the completion UI by 1 second
+            if cards.allSatisfy({ $0.solved }) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    gameCompleted = true
+                }
+            }
+            
+                                
         }
     }
 
