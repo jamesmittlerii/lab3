@@ -59,8 +59,7 @@ struct ContentView: View {
     @State private var tapsCount: Int = 0
     @State private var gameCompleted: Bool = false
     @State private var scoreHistory: [Int] = []
-    
-  
+    @State private var dateHistory: [String] = [] // Date array
     @State private var cards: [Card] = ContentView.generateCards()
     
     static func generateCards() -> [Card] {
@@ -77,7 +76,16 @@ struct ContentView: View {
             Text("Current Taps: \(tapsCount)")
                 .font(.largeTitle)
                 .padding()
-
+            HStack {
+                Text("RESET")
+                
+                Button {resetGame()
+                } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .foregroundColor(.blue)
+                        .accessibilityLabel("New Game")
+                }
+            }
             // if we haven't solved show the grid
             
             if !gameCompleted {
@@ -102,7 +110,7 @@ struct ContentView: View {
                         .padding()
 
                     Button(action: resetGame) {
-                        Text("Play Again")
+                        Text("Play Again ?")
                             .font(.title2)
                             .padding()
                             .background(Color.blue)
@@ -114,28 +122,38 @@ struct ContentView: View {
                     Text("Score History")
                         .font(.headline)
                         .padding(.top)
-
                     VStack(spacing: 5) {
                         ForEach(scoreHistory.indices, id: \.self) { index in
                             HStack {
-                                Text("Game \(index + 1)")
+                                Text("Game \(index + 1) - Date: \(dateHistory[index])")
                                     .font(.subheadline)
                                 Spacer()
                                 Text("\(scoreHistory[index]) Taps")
-                                    .font(.subheadline)
-                            }
-                            .padding()
-                            .border(Color.gray, width: 1)
+                                Spacer()
+                                        .font(.subheadline)
+                                }
+                                .padding()
+                                .border(Color.gray, width: 1)
+                            
                         }
                     }
                 }
                 .padding()
+                
                 .onAppear {
                     scoreHistory.append(tapsCount)
+                    dateHistory.append(getCurrentDateString())
+                    
                 }
             }
         }
         .onAppear(perform: setupGame)
+    }
+
+private func getCurrentDateString() -> String {
+        let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "MM/dd '@' HH:mm"
+        return dateFormatter.string(from: Date())
     }
 
     private func setupGame() {
@@ -189,8 +207,6 @@ struct ContentView: View {
                     gameCompleted = true
                 }
             }
-            
-                                
         }
     }
 
