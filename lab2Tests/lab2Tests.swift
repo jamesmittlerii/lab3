@@ -1,10 +1,10 @@
 /**
  
- * Lab 2
+ * Lab 2 Group 11
  * Dave Norvall and Jim Mittler
  * 10 October 2025
  
- Classic  Concentration Flip Game with Emojis
+ Classic Concentration Flip Game with Mahjong Tiles
  
  _Italic text_
  __Bold text__

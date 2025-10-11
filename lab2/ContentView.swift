@@ -1,10 +1,10 @@
 /**
  
- * Lab 2
+ * Lab 2 Group 11
  * Dave Norvall and Jim Mittler
  * 10 October 2025
  
- Classic Concentration Flip Game with Emojis
+ Classic Concentration Flip Game with Mahjong Tiles
  
  _Italic text_
  __Bold text__
@@ -38,16 +38,22 @@ struct TileCards: View {
 
     var body: some View {
         ZStack {
+            // border
             RoundedRectangle(cornerRadius: 10)
                 .foregroundColor(.white)
             RoundedRectangle(cornerRadius: 10)
                 .stroke(lineWidth: 3).foregroundColor(.blue)
+            // the image
             Image(card.content).resizable().scaledToFit().padding()
+            
+            // something to hide the image before we flip
             let cover = RoundedRectangle(cornerRadius: 10)
                 .foregroundColor(.blue)
             cover.opacity(card.isFaceUp ? 0 : 1)
         }
         .padding(.horizontal)
+        
+        // if we haven't solved this card and it's not turned over, try to flip
         .onTapGesture {
             if !card.solved && !card.isFaceUp {
                 onTap()
@@ -59,10 +65,10 @@ struct TileCards: View {
 // the main view
 struct ContentView: View {
     
-    // what tile was first flipped
+    // what tile was first flipped; perhaps none
     @State private var firstSelectedIndex: Int?
     
-    // second flipped
+    // second flipped; perhaps none
     @State private var secondSelectedIndex: Int?
     
     // how many clicks have we done this game?
@@ -94,6 +100,8 @@ struct ContentView: View {
             Text("Current Taps: \(tapsCount)")
                 .font(.largeTitle)
                 .padding()
+            
+            // button to restart
             HStack {
                 Text("RESET")
                 
@@ -245,7 +253,7 @@ private func getCurrentDateString() -> String {
 }
 
 
-
+// show a preview
 #Preview {
     ContentView()
 }
