@@ -4,7 +4,7 @@
  * Dave Norvall and Jim Mittler
  * 10 October 2025
  
- Classic  Concentration Flip Game with Emojis
+ Classic Concentration Flip Game with Emojis
  
  _Italic text_
  __Bold text__
@@ -14,6 +14,8 @@
 
 import SwiftUI
 
+
+// our mahjong tiles 1-9 in three suites
 let allImages: [String] = {
     let suits = ["Man", "Sou", "Pin"]
     return suits.flatMap { suit in
@@ -21,6 +23,7 @@ let allImages: [String] = {
     }
 }()
 
+// data structure for a tile
 struct Card: Identifiable {
     let id = UUID()
     let content: String
@@ -28,6 +31,7 @@ struct Card: Identifiable {
     var solved: Bool = false
 }
 
+// view for our tile
 struct TileCards: View {
     let card: Card
     let onTap: () -> Void
@@ -52,16 +56,30 @@ struct TileCards: View {
     }
 }
 
-
+// the main view
 struct ContentView: View {
+    
+    // what tile was first flipped
     @State private var firstSelectedIndex: Int?
+    
+    // second flipped
     @State private var secondSelectedIndex: Int?
+    
+    // how many clicks have we done this game?
     @State private var tapsCount: Int = 0
+    
+    // did we win?
+    
     @State private var gameCompleted: Bool = false
+    
+    // score keeping history
     @State private var scoreHistory: [Int] = []
     @State private var dateHistory: [String] = [] // Date array
+    
+    // our randomized tiles
     @State private var cards: [Card] = ContentView.generateCards()
     
+    // shuffle the cards and return an array of 12 pairs
     static func generateCards() -> [Card] {
            let chosen = allImages.shuffled().prefix(12)
            let pairs = Array(chosen) + Array(chosen)
@@ -147,16 +165,18 @@ struct ContentView: View {
                 }
             }
         }
-        .onAppear(perform: setupGame)
+        .onAppear(perform: resetGame)
     }
 
+    // get the current date time
 private func getCurrentDateString() -> String {
         let dateFormatter = DateFormatter()
     dateFormatter.dateFormat = "MM/dd '@' HH:mm"
         return dateFormatter.string(from: Date())
     }
 
-    private func setupGame() {
+    // reset everything for the next game
+    private func resetGame() {
         tapsCount = 0
         gameCompleted = false
         cards = ContentView.generateCards()
@@ -165,6 +185,8 @@ private func getCurrentDateString() -> String {
     }
 
     // tap a card and flip
+    
+    /* flip only if the card is face down, the card hasn't been matched, the game isn't completed and there aren't already two cards flipped */
     private func cardTapped(at index: Int) {
         guard !cards[index].isFaceUp,
                 !cards[index].solved,
@@ -172,13 +194,19 @@ private func getCurrentDateString() -> String {
               firstSelectedIndex == nil || secondSelectedIndex == nil
         else { return }
 
+        // increment our counter
         tapsCount += 1
+        
+        // turn the card over
         cards[index].isFaceUp = true
 
+        // keep track of which cards we flipped over
         if firstSelectedIndex == nil {
             firstSelectedIndex = index
         } else {
             secondSelectedIndex = index
+            
+            // if this is the second card flipped, did we match?
             checkMatch()
         }
 
@@ -189,6 +217,7 @@ private func getCurrentDateString() -> String {
     private func checkMatch() {
         guard let firstIndex = firstSelectedIndex, let secondIndex = secondSelectedIndex else { return }
 
+        // if we didn't match, flip the cards back over after a short delay
         if cards[firstIndex].content != cards[secondIndex].content {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 cards[firstIndex].isFaceUp = false
@@ -197,6 +226,8 @@ private func getCurrentDateString() -> String {
                 secondSelectedIndex = nil
             }
         } else {
+            
+            // ok..we matched! mark that.
             cards[firstIndex].solved = true
             cards[secondIndex].solved = true
             firstSelectedIndex = nil
@@ -210,30 +241,10 @@ private func getCurrentDateString() -> String {
         }
     }
 
-    private func resetGame() {
-        setupGame()
-    }
+   
 }
 
-// this is our card
 
-struct CardView: View {
-    let title: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.largeTitle)
-                .frame(width: 70, height: 70)
-                .background(Color.blue)
-                .cornerRadius(10)
-                .foregroundColor(.white)
-                .border(Color.white, width: 2)
-        }
-        .disabled(!title.isEmpty) // Disable button if it's already matched
-    }
-}
 
 #Preview {
     ContentView()

@@ -4,7 +4,7 @@
  * Dave Norvall and Jim Mittler
  * 10 October 2025
  
- Classic  Concentration Flip Game with Emojis
+ Classic Concentration Flip Game with Emojis
  
  _Italic text_
  __Bold text__
