@@ -9,20 +9,6 @@ import AudioToolbox
 import GameKit
 import SwiftUI
 
-let allImages: [String] = {
-    let suits = ["Man", "Sou", "Pin"]
-    return suits.flatMap { suit in
-        (1...9).map { "\(suit)\($0)" }
-    }
-}()
-
-struct Card: Identifiable {
-    let id = UUID()
-    let content: String
-    var isFaceUp: Bool = false
-    var solved: Bool = false
-}
-
 struct TileCards: View {
     let card: Card
     let onTap: () -> Void
@@ -109,12 +95,12 @@ private func currentRootViewController() -> UIViewController? {
     // Prefer key window; otherwise first window
     for scene in scenes {
         if let keyWindow = scene.windows.first(where: { $0.isKeyWindow }),
-            let root = keyWindow.rootViewController
+           let root = keyWindow.rootViewController
         {
             return root
         }
         if let anyWindow = scene.windows.first,
-            let root = anyWindow.rootViewController
+           let root = anyWindow.rootViewController
         {
             return root
         }
@@ -133,8 +119,8 @@ func authenticateGameCenter(completion: ((Error?) -> Void)? = nil) {
                 // As a fallback, try to find a top-most controller to present from
                 if let windowScene = UIApplication.shared.connectedScenes.first
                     as? UIWindowScene,
-                    let window = windowScene.windows.first,
-                    let root = window.rootViewController
+                   let window = windowScene.windows.first,
+                   let root = window.rootViewController
                 {
                     root.present(vc, animated: true)
                 } else {
@@ -146,70 +132,6 @@ func authenticateGameCenter(completion: ((Error?) -> Void)? = nil) {
             }
         }
         completion?(error)
-    }
-}
-
-// Report score to Game Center (modern iOS 14+ API, no fallback)
-func reportScore(_ score: Int, toLeaderboard leaderboardID: String) {
-    GKLeaderboard.submitScore(
-        score,
-        context: 0,
-        player: GKLocalPlayer.local,
-        leaderboardIDs: [leaderboardID]
-    ) { error in
-        if let error = error {
-            print("Error reporting score: \(error.localizedDescription)")
-        } else {
-            print("Score reported successfully!")
-        }
-    }
-}
-
-// Load the current player's personal best (lowest) score from Game Center
-func loadHighScoreFromGameCenter(
-    leaderboardID: String,
-    completion: @escaping (Int?) -> Void
-) {
-    // Ensure the local player is authenticated
-    guard GKLocalPlayer.local.isAuthenticated else {
-        completion(nil)
-        return
-    }
-
-    GKLeaderboard.loadLeaderboards(IDs: [leaderboardID]) {
-        leaderboards,
-        error in
-        if let error = error {
-            print("Error loading leaderboard: \(error.localizedDescription)")
-            completion(nil)
-            return
-        }
-        guard let leaderboard = leaderboards?.first else {
-            print("Leaderboard not found for ID: \(leaderboardID)")
-            completion(nil)
-            return
-        }
-
-        // Request entries; we only care about the localPlayerEntry in the callback.
-        leaderboard.loadEntries(
-            for: .global,
-            timeScope: .allTime,
-            range: NSRange(location: 1, length: 1)
-        ) { localPlayerEntry, _, _, error in
-            if let error = error {
-                print(
-                    "Error loading local player entry: \(error.localizedDescription)"
-                )
-                completion(nil)
-                return
-            }
-            guard let local = localPlayerEntry else {
-                // No score submitted yet by this player
-                completion(nil)
-                return
-            }
-            completion(Int(local.score))
-        }
     }
 }
 
@@ -266,17 +188,14 @@ struct GameCenterView: UIViewControllerRepresentable {
 }
 
 struct ContentView: View {
-    private static let leaderboardID = "KingOfTheHill"  // <-- Set your real leaderboard ID here
-
+  
     @Environment(\.horizontalSizeClass) private var hSizeClass
 
-    @State private var cards: [Card] = ContentView.generateCards()
-    @State private var indicesOfFaceUp: [Int] = []
+    @StateObject private var model = GameModel()
+
     @State private var showConfetti = false
     @State private var confettiID = UUID()
-    @State private var flipCount = 0
     @State private var gameCenterError: String?
-    @State private var gameCenterBest: Int?  // Only track GC best in-memory for display
     @State private var showingLeaderboard = false
     @State private var isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
 
@@ -286,22 +205,16 @@ struct ContentView: View {
         return UIDevice.current.userInterfaceIdiom == .pad
     }
 
-    static func generateCards() -> [Card] {
-        let chosen = allImages.shuffled().prefix(12)
-        let pairs = Array(chosen) + Array(chosen)
-        return pairs.shuffled().map { Card(content: $0) }
-    }
-
     // Header view extracted so we can measure remaining height
     @ViewBuilder
     private func headerView() -> some View {
         HStack(spacing: 8) {
-            Text("Flips: \(flipCount)")
+            Text("Flips: \(model.flipCount)")
                 .font(.headline)
                 .foregroundColor(.blue)
             Text(
                 {
-                    if let best = gameCenterBest {
+                    if let best = model.personalBest {
                         return "High Score: \(best)"
                     } else {
                         return "High Score: --"
@@ -312,7 +225,7 @@ struct ContentView: View {
             .foregroundColor(.green)
 
             Button {
-                resetGame()
+                model.newGame()
             } label: {
                 Image(systemName: "arrow.triangle.2.circlepath")
                     .foregroundColor(.blue)
@@ -339,84 +252,6 @@ struct ContentView: View {
             .help("Show global leaderboard")
         }
         .padding(.top, 12)
-    }
-
-    func handleTap(on index: Int) {
-        guard !cards[index].isFaceUp, !cards[index].solved,
-            indicesOfFaceUp.count < 2
-        else { return }
-
-        // Increment flip count for a valid flip
-        flipCount += 1
-
-        var newCards = cards
-        newCards[index].isFaceUp = true
-        cards = newCards
-        indicesOfFaceUp.append(index)
-
-        if indicesOfFaceUp.count == 2 {
-            let firstIdx = indicesOfFaceUp[0]
-            let secondIdx = indicesOfFaceUp[1]
-            if cards[firstIdx].content == cards[secondIdx].content {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                    var newCards = cards
-                    newCards[firstIdx].solved = true
-                    newCards[secondIdx].solved = true
-                    cards = newCards
-                    indicesOfFaceUp = []
-                    // Haptic for match
-                    playMatchHaptic()
-                    checkForWin()
-                }
-            } else {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-                    var newCards = cards
-                    newCards[firstIdx].isFaceUp = false
-                    newCards[secondIdx].isFaceUp = false
-                    cards = newCards
-                    indicesOfFaceUp = []
-                    // Optional: subtle haptic to indicate mismatch
-                    //playMismatchHaptic()
-                }
-            }
-        }
-    }
-
-    func checkForWin() {
-        if cards.allSatisfy({ $0.solved }) {
-            let newScore = flipCount
-
-            // Always report the score, regardless of current global best.
-            reportScore(newScore, toLeaderboard: Self.leaderboardID)
-
-            // Refresh personal best for display only.
-            loadHighScoreFromGameCenter(leaderboardID: Self.leaderboardID) {
-                personalBest in
-                DispatchQueue.main.async {
-                    if let personalBest = personalBest {
-                        gameCenterBest = min(personalBest, newScore)
-                    } else {
-                        // If no previous score, show our score as best for now.
-                        gameCenterBest = newScore
-                    }
-
-                    // Confetti feedback + win sound
-                    confettiID = UUID()
-                    showConfetti = true
-                    playWinSound()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                        showConfetti = false
-                    }
-                }
-            }
-        }
-    }
-
-    func resetGame() {
-        cards = ContentView.generateCards()
-        indicesOfFaceUp = []
-        showConfetti = false
-        flipCount = 0
     }
 
     var body: some View {
@@ -474,10 +309,9 @@ struct ContentView: View {
 
                     // Grid with tighter spacing and reduced side padding on iPhone
                     LazyVGrid(columns: columns, spacing: rowSpacing) {
-                        ForEach(cards.indices, id: \.self) { idx in
-                            TileCards(card: cards[idx])
-                            {
-                                handleTap(on: idx)
+                        ForEach(model.cards.indices, id: \.self) { idx in
+                            TileCards(card: model.cards[idx]) {
+                                model.flip(cardAt: idx)
                             }
                             .frame(width: tileSize, height: tileSize)
                         }
@@ -508,9 +342,20 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showingLeaderboard) {
-            GameCenterView(leaderboardID: Self.leaderboardID)
+            GameCenterView(leaderboardID: model.leaderboardID)
         }
         .animation(.default, value: showConfetti)
+        .onReceive(model.$isWin) { won in
+            guard won else { return }
+            // Model handles reporting and refreshing personalBest.
+            // Just show celebration UI here.
+            confettiID = UUID()
+            showConfetti = true
+            playWinSound()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                showConfetti = false
+            }
+        }
         .onAppear {
             authenticateGameCenter { error in
                 if let error = error {
@@ -518,15 +363,11 @@ struct ContentView: View {
                     self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
                 } else {
                     self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
-                    // Automatically fetch personal best from Game Center after successful auth
+                    // After successful auth, ask the model to refresh personal best.
                     if self.isGCAuthenticated {
-                        loadHighScoreFromGameCenter(
-                            leaderboardID: Self.leaderboardID
-                        ) { score in
-                            DispatchQueue.main.async {
-                                gameCenterBest = score
-                            }
-                        }
+                        model.loadHighScoreFromGameCenter(
+                            
+                        )
                     }
                 }
                 print(
@@ -541,3 +382,4 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
+
