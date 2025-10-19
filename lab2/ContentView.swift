@@ -9,8 +9,14 @@ import AudioToolbox
 import GameKit
 import SwiftUI
 
-struct TileCards: View {
+/* this is our structure for the tiled card */
+
+struct TiledCard: View {
+
+    // our card data structure
     let card: Card
+
+    // the closure to call on tap
     let onTap: () -> Void
 
     var body: some View {
@@ -22,17 +28,20 @@ struct TileCards: View {
             Image(card.content).resizable().scaledToFit().padding()
             let cover = RoundedRectangle(cornerRadius: 10)
                 .foregroundColor(.blue)
+            
+            // we show a blue rectangle to cover the image if the card isn't face up
             cover.opacity(card.isFaceUp ? 0 : 1)
         }
         .padding(.horizontal)
+        
+        // do the card flipping
         .onTapGesture {
-            if !card.solved && !card.isFaceUp {
-                onTap()
-            }
+            onTap()
         }
     }
 }
 
+// this is for showing some confetti when we win
 struct ConfettiParticle: Identifiable {
     let id = UUID()
     var x: Double
@@ -42,6 +51,7 @@ struct ConfettiParticle: Identifiable {
     var duration: Double
 }
 
+// a view to show some confetti
 struct ConfettiView: View {
     @State private var confetti = [ConfettiParticle]()
     let colors: [Color] = [
@@ -95,12 +105,12 @@ private func currentRootViewController() -> UIViewController? {
     // Prefer key window; otherwise first window
     for scene in scenes {
         if let keyWindow = scene.windows.first(where: { $0.isKeyWindow }),
-           let root = keyWindow.rootViewController
+            let root = keyWindow.rootViewController
         {
             return root
         }
         if let anyWindow = scene.windows.first,
-           let root = anyWindow.rootViewController
+            let root = anyWindow.rootViewController
         {
             return root
         }
@@ -119,8 +129,8 @@ func authenticateGameCenter(completion: ((Error?) -> Void)? = nil) {
                 // As a fallback, try to find a top-most controller to present from
                 if let windowScene = UIApplication.shared.connectedScenes.first
                     as? UIWindowScene,
-                   let window = windowScene.windows.first,
-                   let root = window.rootViewController
+                    let window = windowScene.windows.first,
+                    let root = window.rootViewController
                 {
                     root.present(vc, animated: true)
                 } else {
@@ -188,13 +198,12 @@ struct GameCenterView: UIViewControllerRepresentable {
 }
 
 struct ContentView: View {
-  
+
     @Environment(\.horizontalSizeClass) private var hSizeClass
 
     @StateObject private var model = GameModel()
 
     @State private var showConfetti = false
-    @State private var confettiID = UUID()
     @State private var gameCenterError: String?
     @State private var showingLeaderboard = false
     @State private var isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
@@ -264,7 +273,8 @@ struct ContentView: View {
 
             // Compact-width (iPhone) tweaks: tighten margins/gaps to maximize tile size
             let isCompact = (hSizeClass == .compact)
-            let horizontalPadding: CGFloat = isCompact ? 4 : baseHorizontalPadding
+            let horizontalPadding: CGFloat =
+                isCompact ? 4 : baseHorizontalPadding
             let tightSpacing: CGFloat = isCompact ? 1 : baseInterItemSpacing
 
             // Estimate header height; use a smaller estimate on iPhone to give tiles more room
@@ -272,26 +282,34 @@ struct ContentView: View {
 
             // Available grid area
             let availableWidth = max(0, geo.size.width - horizontalPadding * 2)
-            let availableHeight = max(0, geo.size.height - estimatedHeaderHeight - 16) // slightly smaller bottom safety on iPhone
+            let availableHeight = max(
+                0,
+                geo.size.height - estimatedHeaderHeight - 16
+            )  // slightly smaller bottom safety on iPhone
 
             // Compute both width-limited and height-limited square tile sizes
             let widthLimitedTile =
-                (availableWidth - tightSpacing * CGFloat(cols - 1)) / CGFloat(cols)
+                (availableWidth - tightSpacing * CGFloat(cols - 1))
+                / CGFloat(cols)
             let heightLimitedTile =
-                (availableHeight - tightSpacing * CGFloat(rows - 1)) / CGFloat(rows)
+                (availableHeight - tightSpacing * CGFloat(rows - 1))
+                / CGFloat(rows)
 
             // Choose the smaller so the grid always fits
             let tileSize = max(0, min(widthLimitedTile, heightLimitedTile))
 
             // Determine if width or height is the limiting factor
-            let widthIsLimiter = widthLimitedTile <= heightLimitedTile + .ulpOfOne
+            let widthIsLimiter =
+                widthLimitedTile <= heightLimitedTile + .ulpOfOne
 
             // Use tight spacing on iPhone; keep base spacing on iPad-like widths
             let columnSpacing = tightSpacing
             // Optionally, add any remaining vertical space (when width is the limiter) into row spacing
             let tilesTotalHeight = tileSize * CGFloat(rows)
             let leftoverHeight = max(0, availableHeight - tilesTotalHeight)
-            let extraPerGap = (widthIsLimiter && rows > 1) ? leftoverHeight / CGFloat(rows - 1) : 0
+            let extraPerGap =
+                (widthIsLimiter && rows > 1)
+                ? leftoverHeight / CGFloat(rows - 1) : 0
             let rowSpacing = tightSpacing + extraPerGap
 
             // Grid definition: 4 fixed columns with (possibly) tighter horizontal spacing
@@ -301,7 +319,10 @@ struct ContentView: View {
             )
 
             // Total grid height: tiles + (rows - 1) gaps using the computed row spacing
-            let gridHeight = max(0, tilesTotalHeight + rowSpacing * CGFloat(rows - 1))
+            let gridHeight = max(
+                0,
+                tilesTotalHeight + rowSpacing * CGFloat(rows - 1)
+            )
 
             ZStack {
                 VStack(spacing: 8) {
@@ -309,8 +330,10 @@ struct ContentView: View {
 
                     // Grid with tighter spacing and reduced side padding on iPhone
                     LazyVGrid(columns: columns, spacing: rowSpacing) {
+                        // loop through all the cards and build a tiledcard view
+                        // we need to pass the flip function as a closure
                         ForEach(model.cards.indices, id: \.self) { idx in
-                            TileCards(card: model.cards[idx]) {
+                            TiledCard(card: model.cards[idx]) {
                                 model.flip(cardAt: idx)
                             }
                             .frame(width: tileSize, height: tileSize)
@@ -321,16 +344,21 @@ struct ContentView: View {
 
                     Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity,
+                    alignment: .top
+                )
 
+                // if we won, show some confetti
                 if showConfetti {
                     ConfettiView()
-                        .id(confettiID)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .transition(.opacity)
                         .zIndex(1)
                 }
 
+                // show any error we got from gamecenter
                 if let gameCenterError = gameCenterError {
                     VStack {
                         Spacer()
@@ -341,22 +369,25 @@ struct ContentView: View {
                 }
             }
         }
+        // overlay to show the global leaderboard
         .sheet(isPresented: $showingLeaderboard) {
             GameCenterView(leaderboardID: model.leaderboardID)
         }
         .animation(.default, value: showConfetti)
+        // ok - we got notification back from the model that we won
         .onReceive(model.$isWin) { won in
             guard won else { return }
             // Model handles reporting and refreshing personalBest.
             // Just show celebration UI here.
-            confettiID = UUID()
             showConfetti = true
             playWinSound()
+            // turn the confetti off after a bit
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                 showConfetti = false
             }
         }
         .onAppear {
+            // login to game center to fetch high score
             authenticateGameCenter { error in
                 if let error = error {
                     self.gameCenterError = error.localizedDescription
@@ -365,9 +396,7 @@ struct ContentView: View {
                     self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
                     // After successful auth, ask the model to refresh personal best.
                     if self.isGCAuthenticated {
-                        model.loadHighScoreFromGameCenter(
-                            
-                        )
+                        model.loadHighScoreFromGameCenter()
                     }
                 }
                 print(
@@ -382,4 +411,3 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
-
