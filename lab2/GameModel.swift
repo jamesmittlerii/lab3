@@ -94,6 +94,7 @@ final class GameModel: ObservableObject {
 
             } else {
                 // Mismatch: flip back after a short delay
+                // this weak self stuff is weird but necessary
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
                     [weak self] in
                     guard let self = self else { return }
@@ -114,7 +115,10 @@ final class GameModel: ObservableObject {
         }
 
         // if we beat our best score - update our personal best
-        personalBest = min(personalBest ?? newCount, newCount)
+        if personalBest == nil || newCount < personalBest! {
+                personalBest = newCount
+            }
+        
         print("updating personal best to : \(personalBest!)")
     }
 

@@ -1,14 +1,34 @@
-//
-//  ContentView.swift
-//  lab2
-//
-//  Created by cisstudent on 10/7/25.
-//
+/**
+
+ * __Partner Lab 3__
+ * Jim Mittler
+ * 20 October 2025
+
+
+ We've updated our Game to use MVVM architecture
+ 
+ all the game logic is moved to the GameModel class
+ 
+ ContentView contains the UI logic and the code to support showing the global leaderboard
+ 
+ The game connects to Game Center to keep track of personal best and show a global leaderboard of all the players
+ 
+ We show a 4x6 grid of randomly shuffled tile pairs.
+ If you match two tiles they remain face up until you complete the game.
+ We show some confetti when you win.
+
+ _Italic text_
+ __Bold text__
+ ~~Strikethrough text~~
+
+ */
 
 import AudioToolbox
 import GameKit
 import SwiftUI
 import Combine
+
+// this class manages the game center authentication
 
 class GameCenterManager: ObservableObject {
     // A published property to reflect the authentication status.
@@ -34,7 +54,7 @@ class GameCenterManager: ObservableObject {
     }
 }
 
-/* this is our structure for the tiled card */
+/* this is our structure for the tiled card in the UI */
 
 struct TiledCard: View {
 
@@ -60,6 +80,7 @@ struct TiledCard: View {
         .padding(.horizontal)
         
         // do the card flipping
+        // this closure stuff is funky we pass in a reference to the game model to do the work
         .onTapGesture {
             onTap()
         }
@@ -121,51 +142,35 @@ struct ConfettiView: View {
 }
 
 // Helper to get the current key window’s root view controller in a scene-based app
-private func currentRootViewController() -> UIViewController? {
-    // Find the active foreground scene
-    let scenes = UIApplication.shared.connectedScenes
-        .compactMap { $0 as? UIWindowScene }
-        .filter { $0.activationState == .foregroundActive }
+// this is to support showing the global leaderboard
 
-    // Prefer key window; otherwise first window
-    for scene in scenes {
-        if let keyWindow = scene.windows.first(where: { $0.isKeyWindow }),
-            let root = keyWindow.rootViewController
-        {
-            return root
-        }
-        if let anyWindow = scene.windows.first,
-            let root = anyWindow.rootViewController
-        {
-            return root
-        }
+private func currentRootViewController() -> UIViewController? {
+    guard
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive })
+    else {
+        return nil
     }
-    return nil
+
+    let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first
+    return window?.rootViewController
 }
 
 // Game Center login helper
 func authenticateGameCenter(completion: ((Error?) -> Void)? = nil) {
     GKLocalPlayer.local.authenticateHandler = { gcAuthVC, error in
         if let vc = gcAuthVC {
-            // Present from the active scene’s rootViewController (iOS 15+ friendly)
-            if let rootVC = currentRootViewController() {
-                rootVC.present(vc, animated: true)
-            } else {
-                // As a fallback, try to find a top-most controller to present from
-                if let windowScene = UIApplication.shared.connectedScenes.first
-                    as? UIWindowScene,
-                    let window = windowScene.windows.first,
-                    let root = window.rootViewController
-                {
-                    root.present(vc, animated: true)
-                } else {
-                    // Could not find a presentation anchor
-                    print(
-                        "Game Center: Unable to find a rootViewController to present authentication UI."
-                    )
-                }
+            guard let rootVC = currentRootViewController() else {
+                print("Game Center: No rootViewController available to present authentication UI.")
+                completion?(error)
+                return
             }
+            rootVC.present(vc, animated: true)
+            completion?(error)
+            return
         }
+        // No UI to present; just forward any error (or nil on success)
         completion?(error)
     }
 }
@@ -186,6 +191,8 @@ private func playWinSound() {
     AudioServicesPlaySystemSound(1322)
 }
 
+// our global leaderboard
+
 struct GameCenterView: UIViewControllerRepresentable {
     let leaderboardID: String
 
@@ -202,19 +209,23 @@ struct GameCenterView: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: GKGameCenterViewController, context: Context) {}
 }
 
-
+// this is the main view for the game
 struct ContentView: View {
 
     @Environment(\.horizontalSizeClass) private var hSizeClass
 
+    // our object classes
+    
     @StateObject private var model = GameModel()
     @StateObject private var gameCenterManager = GameCenterManager()
 
+    // anything with @state will refresh the UI on change
     @State private var showConfetti = false
     @State private var gameCenterError: String?
     @State private var showingLeaderboard = false
     @State private var isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
 
+    // are we running on Ipad?
     private var isPadLayout: Bool {
         // Prefer size class, fallback to idiom
         if let hSizeClass, hSizeClass == .regular { return true }
@@ -240,6 +251,7 @@ struct ContentView: View {
             .font(.headline)
             .foregroundColor(.green)
 
+            // new game icon
             Button {
                 model.newGame()
             } label: {
@@ -249,6 +261,7 @@ struct ContentView: View {
             }
             .help("Start a new game")
 
+            // global leadboard icon
             Button {
                 if isGCAuthenticated {
                     showingLeaderboard = true
@@ -270,69 +283,64 @@ struct ContentView: View {
         .padding(.top, 12)
     }
 
+    // this is our main view -
     var body: some View {
         GeometryReader { geo in
-            // Orientation detection
-           
-            let rows = 6
-            let cols = 4
+            
+            // our grid sizes
+            let rows: CGFloat = 6
+            let cols: CGFloat = 4
+            let numHSpaces = cols - 1 // 3
+            let numVSpaces = rows - 1 // 5
 
-            // Common layout spacing values used below
-            let baseHorizontalPadding: CGFloat = 16
-            let baseInterItemSpacing: CGFloat = 12
-
-            // Compact-width (iPhone) tweaks: tighten margins/gaps to maximize tile size
+            
             let isCompact = (hSizeClass == .compact)
-            let horizontalPadding: CGFloat =
-                isCompact ? 4 : baseHorizontalPadding
-            let tightSpacing: CGFloat = isCompact ? 1 : baseInterItemSpacing
+            
+            // here we try to get the best sizing for 4x6
+            // tough because ipad/iphone are different ratios and sizes
 
-            // Estimate header height; use a smaller estimate on iPhone to give tiles more room
-            let estimatedHeaderHeight: CGFloat = isCompact ? 36 : (44 + 12)
+            // Tighter margins/gaps on compact devices
+            let horizontalPadding: CGFloat = isCompact ? 0 : 12
+            let interItemSpacing: CGFloat = isCompact ? 0 : 12
 
-            // Available grid area
-            let availableWidth = max(0, geo.size.width - horizontalPadding * 2)
-            let availableHeight = max(
-                0,
-                geo.size.height - estimatedHeaderHeight - 16
-            )  // slightly smaller bottom safety on iPhone
+            // Smaller header estimate on compact devices
+            let estimatedHeaderHeight: CGFloat = isCompact ? 36 : 56 // 44 + 12 = 56
 
-            // Compute both width-limited and height-limited square tile sizes
-            let widthLimitedTile =
-                (availableWidth - tightSpacing * CGFloat(cols - 1))
-                / CGFloat(cols)
-            let heightLimitedTile =
-                (availableHeight - tightSpacing * CGFloat(rows - 1))
-                / CGFloat(rows)
+            // --- Available Area Calculation ---
 
-            // Choose the smaller so the grid always fits
+            let availableWidth = geo.size.width - 2 * horizontalPadding
+            let availableHeight = geo.size.height - estimatedHeaderHeight - 16 // Bottom safety margin
+
+            // --- Tile Size Calculation ---
+
+            // Calculate the maximum possible square tile size limited by the width
+            let widthLimitedTile = (availableWidth - interItemSpacing * numHSpaces) / cols
+
+            // Calculate the maximum possible square tile size limited by the height
+            let heightLimitedTile = (availableHeight - interItemSpacing * numVSpaces) / rows
+
+            // Choose the smaller size to ensure the grid fits
             let tileSize = max(0, min(widthLimitedTile, heightLimitedTile))
 
-            // Determine if width or height is the limiting factor
-            let widthIsLimiter =
-                widthLimitedTile <= heightLimitedTile + .ulpOfOne
+            // --- Spacing and Grid Finalization ---
 
-            // Use tight spacing on iPhone; keep base spacing on iPad-like widths
-            let columnSpacing = tightSpacing
-            // Optionally, add any remaining vertical space (when width is the limiter) into row spacing
-            let tilesTotalHeight = tileSize * CGFloat(rows)
+            let widthIsLimiter = widthLimitedTile <= heightLimitedTile + .ulpOfOne
+            let columnSpacing = interItemSpacing
+
+            // Calculate leftover vertical space and distribute it evenly among row gaps
+            let tilesTotalHeight = tileSize * rows
             let leftoverHeight = max(0, availableHeight - tilesTotalHeight)
-            let extraPerGap =
-                (widthIsLimiter && rows > 1)
-                ? leftoverHeight / CGFloat(rows - 1) : 0
-            let rowSpacing = tightSpacing + extraPerGap
+            let extraPerGap = (widthIsLimiter && rows > 1) ? leftoverHeight / numVSpaces : 0
 
-            // Grid definition with dynamic column count
+            let rowSpacing = interItemSpacing + extraPerGap
+
             let columns: [GridItem] = Array(
                 repeating: GridItem(.fixed(tileSize), spacing: columnSpacing),
-                count: cols
+                count: Int(cols)
             )
 
-            // Total grid height: tiles + (rows - 1) gaps using the computed row spacing
-            let gridHeight = max(
-                0,
-                tilesTotalHeight + rowSpacing * CGFloat(rows - 1)
-            )
+            // The final calculated grid height (useful for aligning/positioning the grid)
+            let gridHeight = max(0, tilesTotalHeight + rowSpacing * numVSpaces)
 
             ZStack {
                 VStack(spacing: 8) {
