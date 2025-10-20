@@ -185,6 +185,16 @@ struct GameCenterView: UIViewControllerRepresentable {
 // this is the main view for the game
 struct ContentView: View {
 
+    // A structure to hold the calculated layout parameters for our grid.
+    private struct GridLayout {
+        let columns: [GridItem]
+        let rowSpacing: CGFloat
+        let tileSize: CGFloat
+        let gridHeight: CGFloat
+        let availableWidth: CGFloat
+        let horizontalPadding: CGFloat
+    }
+
     @Environment(\.horizontalSizeClass) private var hSizeClass
 
     // our object classes
@@ -264,79 +274,26 @@ struct ContentView: View {
     // this is our main view -
     var body: some View {
         GeometryReader { geo in
-            
-            // our grid sizes
-            let rows: CGFloat = 6
-            let cols: CGFloat = 4
-            let numHSpaces = cols - 1 // 3
-            let numVSpaces = rows - 1 // 5
 
-            
-            let isCompact = (hSizeClass == .compact)
-            
-            // here we try to get the best sizing for 4x6
-            // tough because ipad/iphone are different ratios and sizes
-
-            // Tighter margins/gaps on compact devices
-            let horizontalPadding: CGFloat = isCompact ? 0 : 12
-            let interItemSpacing: CGFloat = isCompact ? 0 : 12
-
-            // Smaller header estimate on compact devices
-            let estimatedHeaderHeight: CGFloat = isCompact ? 36 : 56 // 44 + 12 = 56
-
-            // --- Available Area Calculation ---
-
-            let availableWidth = geo.size.width - 2 * horizontalPadding
-            let availableHeight = geo.size.height - estimatedHeaderHeight// - 16 // Bottom safety margin
-
-            // --- Tile Size Calculation ---
-
-            // Calculate the maximum possible square tile size limited by the width
-            let widthLimitedTile = (availableWidth - interItemSpacing * numHSpaces) / cols
-
-            // Calculate the maximum possible square tile size limited by the height
-            let heightLimitedTile = (availableHeight - interItemSpacing * numVSpaces) / rows
-
-            // Choose the smaller size to ensure the grid fits
-            let tileSize = max(0, min(widthLimitedTile, heightLimitedTile))
-
-            // --- Spacing and Grid Finalization ---
-
-            let widthIsLimiter = widthLimitedTile <= heightLimitedTile + .ulpOfOne
-            let columnSpacing = interItemSpacing
-
-            // Calculate leftover vertical space and distribute it evenly among row gaps
-            let tilesTotalHeight = tileSize * rows
-            let leftoverHeight = max(0, availableHeight - tilesTotalHeight)
-            let extraPerGap = (widthIsLimiter && rows > 1) ? leftoverHeight / numVSpaces : 0
-
-            let rowSpacing = interItemSpacing + extraPerGap
-
-            let columns: [GridItem] = Array(
-                repeating: GridItem(.fixed(tileSize), spacing: columnSpacing),
-                count: Int(cols)
-            )
-
-            // The final calculated grid height (useful for aligning/positioning the grid)
-            let gridHeight = max(0, tilesTotalHeight + rowSpacing * numVSpaces)
+            let layout = calculateLayout(for: geo.size, in: hSizeClass)
 
             ZStack {
                 VStack(spacing: 8) {
                     headerView()
 
                     // Grid with tighter spacing and reduced side padding on iPhone
-                    LazyVGrid(columns: columns, spacing: rowSpacing) {
+                    LazyVGrid(columns: layout.columns, spacing: layout.rowSpacing) {
                         // loop through all the cards and build a tiledcard view
                         // we need to pass the flip function as a closure
                         ForEach(model.cards.indices, id: \.self) { idx in
                             TiledCard(card: model.cards[idx]) {
                                 model.flip(cardAt: idx)
                             }
-                            .frame(width: tileSize, height: tileSize)
+                            .frame(width: layout.tileSize, height: layout.tileSize)
                         }
                     }
-                    .frame(width: max(0, availableWidth), height: gridHeight)
-                    .padding(.horizontal, horizontalPadding)
+                    .frame(width: max(0, layout.availableWidth), height: layout.gridHeight)
+                    .padding(.horizontal, layout.horizontalPadding)
 
                     Spacer(minLength: 0)
                 }
@@ -378,8 +335,16 @@ struct ContentView: View {
             showConfetti = true
             playWinSound()
             // turn the confetti off after a bit
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            Task {
+                try? await Task.sleep(for: .seconds(2.5))
                 showConfetti = false
+            }
+        }
+        .onReceive(model.matchResult) { didMatch in
+            if didMatch {
+                playMatchHaptic()
+            } else {
+               // playMismatchHaptic()
             }
         }
         .onAppear {
@@ -401,6 +366,62 @@ struct ContentView: View {
                 )
             }
         }
+    }
+
+    private func calculateLayout(for size: CGSize, in hSizeClass: UserInterfaceSizeClass?) -> GridLayout {
+        // our grid sizes
+        let rows: CGFloat = 6
+        let cols: CGFloat = 4
+        let numHSpaces = cols - 1
+        let numVSpaces = rows - 1
+
+        let isCompact = (hSizeClass == .compact)
+        
+        // Tighter margins/gaps on compact devices
+        let horizontalPadding: CGFloat = isCompact ? 0 : 12
+        let interItemSpacing: CGFloat = isCompact ? 0 : 12
+
+        // Smaller header estimate on compact devices
+        let estimatedHeaderHeight: CGFloat = isCompact ? 36 : 56
+
+        // --- Available Area Calculation ---
+        let availableWidth = size.width - 2 * horizontalPadding
+        let availableHeight = size.height - estimatedHeaderHeight
+
+        // --- Tile Size Calculation ---
+        let widthLimitedTile = (availableWidth - interItemSpacing * numHSpaces) / cols
+        let heightLimitedTile = (availableHeight - interItemSpacing * numVSpaces) / rows
+
+        // Choose the smaller size to ensure the grid fits
+        let tileSize = max(0, min(widthLimitedTile, heightLimitedTile))
+
+        // --- Spacing and Grid Finalization ---
+        let widthIsLimiter = widthLimitedTile <= heightLimitedTile + .ulpOfOne
+        let columnSpacing = interItemSpacing
+
+        // Calculate leftover vertical space and distribute it evenly among row gaps
+        let tilesTotalHeight = tileSize * rows
+        let leftoverHeight = max(0, availableHeight - tilesTotalHeight)
+        let extraPerGap = (widthIsLimiter && rows > 1) ? leftoverHeight / numVSpaces : 0
+
+        let rowSpacing = interItemSpacing + extraPerGap
+
+        let columns: [GridItem] = Array(
+            repeating: GridItem(.fixed(tileSize), spacing: columnSpacing),
+            count: Int(cols)
+        )
+
+        // The final calculated grid height (useful for aligning/positioning the grid)
+        let gridHeight = max(0, tilesTotalHeight + rowSpacing * numVSpaces)
+
+        return GridLayout(
+            columns: columns,
+            rowSpacing: rowSpacing,
+            tileSize: tileSize,
+            gridHeight: gridHeight,
+            availableWidth: availableWidth,
+            horizontalPadding: horizontalPadding
+        )
     }
 }
 

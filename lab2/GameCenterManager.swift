@@ -51,59 +51,45 @@ class GameCenterManager: ObservableObject {
     }
     
     // Submit a score to Game Center
-    func submitScore(_ score: Int) {
+    func submitScore(_ score: Int) async {
         guard GKLocalPlayer.local.isAuthenticated else {
             print("Cannot submit score: player not authenticated.")
             return
         }
-        GKLeaderboard.submitScore(
-            score,
-            context: 0,
-            player: GKLocalPlayer.local,
-            leaderboardIDs: [leaderboardID]
-        ) { error in
-            if let error = error {
-                print("Error reporting score: \(error.localizedDescription)")
-            } else {
-                print("Score reported successfully!")
-            }
+        do {
+            try await GKLeaderboard.submitScore(
+                score,
+                context: 0,
+                player: GKLocalPlayer.local,
+                leaderboardIDs: [leaderboardID]
+            )
+            print("Score reported successfully!")
+        } catch {
+            print("Error reporting score: \(error.localizedDescription)")
         }
     }
     
     // Load the current player's personal best (lowest) score from Game Center
-    func loadPersonalBest(completion: @escaping (Int?) -> Void) {
+    func loadPersonalBest() async -> Int? {
         guard GKLocalPlayer.local.isAuthenticated else {
-            completion(nil)
-            return
+            return nil
         }
-        GKLeaderboard.loadLeaderboards(IDs: [leaderboardID]) { leaderboards, error in
-            if let error = error {
-                print("Error loading leaderboard: \(error.localizedDescription)")
-                completion(nil)
-                return
-            }
-            guard let leaderboard = leaderboards?.first else {
+        do {
+            let leaderboards = try await GKLeaderboard.loadLeaderboards(IDs: [leaderboardID])
+            guard let leaderboard = leaderboards.first else {
                 print("Leaderboard not found for ID: \(self.leaderboardID)")
-                completion(nil)
-                return
+                return nil
             }
-            leaderboard.loadEntries(
-                for: .global,
-                timeScope: .allTime,
-                range: NSRange(location: 1, length: 1)
-            ) { localPlayerEntry, _, _, error in
-                if let error = error {
-                    print("Error loading local player entry: \(error.localizedDescription)")
-                    completion(nil)
-                    return
-                }
-                guard let local = localPlayerEntry, local.score > 0 else {
-                    completion(nil)
-                    return
-                }
-                completion(Int(local.score))
+            
+            let (localPlayerEntry, _) = try await leaderboard.loadEntries(for: [GKLocalPlayer.local], timeScope: .allTime)
+
+            guard let score = localPlayerEntry?.score, score > 0 else {
+                return nil
             }
+            return score
+        } catch {
+            print("Error loading personal best: \(error.localizedDescription)")
+            return nil
         }
     }
 }
-

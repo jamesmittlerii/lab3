@@ -26,12 +26,15 @@ struct Card: Identifiable, Equatable {
 }
 
 // this is our game model
-
+@MainActor
 final class GameModel: ObservableObject {
     @Published private(set) var cards: [Card] = []
     @Published private(set) var flipCount: Int = 0
     @Published var isWin: Bool = false
     @Published private(set) var personalBest: Int?
+
+    // A subject to publish match results: true for a match, false for a mismatch.
+    let matchResult = PassthroughSubject<Bool, Never>()
 
     private var indicesOfFaceUp: [Int] = []
     
@@ -98,13 +101,14 @@ final class GameModel: ObservableObject {
                 self.cards[secondIdx].solved = true
                 self.indicesOfFaceUp = []
                 self.checkForWin()
+                matchResult.send(true)
 
             } else {
                 // Mismatch: flip back after a short delay
-                // this weak self stuff is weird but necessary
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-                    [weak self] in
-                    guard let self = self else { return }
+                matchResult.send(false)
+                Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(0.9))
+                    guard let self else { return }
                     self.cards[firstIdx].isFaceUp = false
                     self.cards[secondIdx].isFaceUp = false
                     self.indicesOfFaceUp = []
@@ -143,22 +147,20 @@ final class GameModel: ObservableObject {
             updatePersonalBest(flipCount)
             // Submit the score (using flipCount) to Game Center when the player wins.
             if GKLocalPlayer.local.isAuthenticated {
-                gameCenterManager?.submitScore(flipCount)
+                Task {
+                    await gameCenterManager?.submitScore(flipCount)
+                }
             }
         }
     }
 
     // Load the current player's personal best (lowest) score from Game Center
     func loadHighScoreFromGameCenter() {
-        guard let manager = gameCenterManager else { return }
-        manager.loadPersonalBest { [weak self] best in
-            guard let self = self else { return }
-            if let best = best {
-                DispatchQueue.main.async {
-                    self.updatePersonalBest(best)
-                }
+        Task {
+            guard let manager = gameCenterManager else { return }
+            if let best = await manager.loadPersonalBest() {
+                self.updatePersonalBest(best)
             }
         }
     }
 }
-
