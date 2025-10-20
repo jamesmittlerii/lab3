@@ -8,6 +8,31 @@
 import AudioToolbox
 import GameKit
 import SwiftUI
+import Combine
+
+class GameCenterManager: ObservableObject {
+    // A published property to reflect the authentication status.
+    @Published var isAuthenticated = false
+    
+    // A state to hold the view controller presented by GameKit, if needed.
+    @Published var authenticationVC: UIViewController? = nil
+    
+    // Call this method to begin the authentication process.
+    func authenticateUser() {
+        GKLocalPlayer.local.authenticateHandler = { [weak self] viewController, error in
+            if GKLocalPlayer.local.isAuthenticated {
+                self?.isAuthenticated = true
+                self?.authenticationVC = nil
+            } else if let vc = viewController {
+                self?.authenticationVC = vc
+                self?.isAuthenticated = false
+            } else {
+                self?.isAuthenticated = false
+                print("Error authenticating to Game Center: \(error?.localizedDescription ?? "Unknown error")")
+            }
+        }
+    }
+}
 
 /* this is our structure for the tiled card */
 
@@ -161,47 +186,29 @@ private func playWinSound() {
     AudioServicesPlaySystemSound(1322)
 }
 
-// SwiftUI wrapper for GKGameCenterViewController
 struct GameCenterView: UIViewControllerRepresentable {
     let leaderboardID: String
-    @Environment(\.dismiss) private var dismiss
 
     func makeUIViewController(context: Context) -> GKGameCenterViewController {
+        // Use the supported initializer that targets a specific leaderboard.
         let vc = GKGameCenterViewController(
             leaderboardID: leaderboardID,
             playerScope: .global,
             timeScope: .allTime
         )
-        vc.gameCenterDelegate = context.coordinator
-        // vc.viewState is deprecated since iOS 14; the initializer above already targets leaderboards.
         return vc
     }
 
-    func updateUIViewController(
-        _ uiViewController: GKGameCenterViewController,
-        context: Context
-    ) {}
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(dismiss: dismiss)
-    }
-
-    class Coordinator: NSObject, GKGameCenterControllerDelegate {
-        let dismiss: DismissAction
-        init(dismiss: DismissAction) { self.dismiss = dismiss }
-        func gameCenterViewControllerDidFinish(
-            _ gameCenterViewController: GKGameCenterViewController
-        ) {
-            dismiss()
-        }
-    }
+    func updateUIViewController(_ uiViewController: GKGameCenterViewController, context: Context) {}
 }
+
 
 struct ContentView: View {
 
     @Environment(\.horizontalSizeClass) private var hSizeClass
 
     @StateObject private var model = GameModel()
+    @StateObject private var gameCenterManager = GameCenterManager()
 
     @State private var showConfetti = false
     @State private var gameCenterError: String?
@@ -265,11 +272,14 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geo in
+            // Orientation detection
+           
+            let rows = 6
+            let cols = 4
+
             // Common layout spacing values used below
             let baseHorizontalPadding: CGFloat = 16
             let baseInterItemSpacing: CGFloat = 12
-            let rows = 6
-            let cols = 4
 
             // Compact-width (iPhone) tweaks: tighten margins/gaps to maximize tile size
             let isCompact = (hSizeClass == .compact)
@@ -312,7 +322,7 @@ struct ContentView: View {
                 ? leftoverHeight / CGFloat(rows - 1) : 0
             let rowSpacing = tightSpacing + extraPerGap
 
-            // Grid definition: 4 fixed columns with (possibly) tighter horizontal spacing
+            // Grid definition with dynamic column count
             let columns: [GridItem] = Array(
                 repeating: GridItem(.fixed(tileSize), spacing: columnSpacing),
                 count: cols
