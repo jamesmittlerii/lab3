@@ -28,32 +28,6 @@ import GameKit
 import SwiftUI
 import Combine
 
-// this class manages the game center authentication
-
-class GameCenterManager: ObservableObject {
-    // A published property to reflect the authentication status.
-    @Published var isAuthenticated = false
-    
-    // A state to hold the view controller presented by GameKit, if needed.
-    @Published var authenticationVC: UIViewController? = nil
-    
-    // Call this method to begin the authentication process.
-    func authenticateUser() {
-        GKLocalPlayer.local.authenticateHandler = { [weak self] viewController, error in
-            if GKLocalPlayer.local.isAuthenticated {
-                self?.isAuthenticated = true
-                self?.authenticationVC = nil
-            } else if let vc = viewController {
-                self?.authenticationVC = vc
-                self?.isAuthenticated = false
-            } else {
-                self?.isAuthenticated = false
-                print("Error authenticating to Game Center: \(error?.localizedDescription ?? "Unknown error")")
-            }
-        }
-    }
-}
-
 /* this is our structure for the tiled card in the UI */
 
 struct TiledCard: View {
@@ -66,8 +40,7 @@ struct TiledCard: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 10)
-                .foregroundColor(.white)
+          
             RoundedRectangle(cornerRadius: 10)
                 .stroke(lineWidth: 3).foregroundColor(.blue)
             Image(card.content).resizable().scaledToFit().padding()
@@ -215,9 +188,14 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var hSizeClass
 
     // our object classes
-    
-    @StateObject private var model = GameModel()
     @StateObject private var gameCenterManager = GameCenterManager()
+    @StateObject private var model: GameModel
+
+    init() {
+        let manager = GameCenterManager()
+        _gameCenterManager = StateObject(wrappedValue: manager)
+        _model = StateObject(wrappedValue: GameModel(gameCenterManager: manager))
+    }
 
     // anything with @state will refresh the UI on change
     @State private var showConfetti = false
@@ -309,7 +287,7 @@ struct ContentView: View {
             // --- Available Area Calculation ---
 
             let availableWidth = geo.size.width - 2 * horizontalPadding
-            let availableHeight = geo.size.height - estimatedHeaderHeight - 16 // Bottom safety margin
+            let availableHeight = geo.size.height - estimatedHeaderHeight// - 16 // Bottom safety margin
 
             // --- Tile Size Calculation ---
 
@@ -389,7 +367,7 @@ struct ContentView: View {
         }
         // overlay to show the global leaderboard
         .sheet(isPresented: $showingLeaderboard) {
-            GameCenterView(leaderboardID: model.leaderboardID)
+            GameCenterView(leaderboardID: gameCenterManager.leaderboardID)
         }
         .animation(.default, value: showConfetti)
         // ok - we got notification back from the model that we won

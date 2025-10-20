@@ -34,17 +34,24 @@ final class GameModel: ObservableObject {
     @Published private(set) var personalBest: Int?
 
     private var indicesOfFaceUp: [Int] = []
-    let leaderboardID = "KingOfTheHill"
-    init() {
+    
+    // Reference to the Game Center manager for reporting/loading scores
+    private weak var gameCenterManager: GameCenterManager?
+
+    // need when we've got multiple classes depending on each other
+    init(gameCenterManager: GameCenterManager?) {
+        self.gameCenterManager = gameCenterManager
         newGame()
     }
 
+    // lets start a new game
+    
     func newGame() {
-        // grab 12 unique tiles
+        // grab 12 unique tiles by shuffling our set and picking the first 12
         let chosen = allImages.shuffled().prefix(12)
         // double that to 24...2 of each
         let pairs = Array(chosen) + Array(chosen)
-        // create an array of (shuffled) cards
+        // create an array of (shuffled again) cards
         cards = pairs.shuffled().map { Card(content: $0) }
         
         // nothing turned up to start
@@ -136,70 +143,22 @@ final class GameModel: ObservableObject {
             updatePersonalBest(flipCount)
             // Submit the score (using flipCount) to Game Center when the player wins.
             if GKLocalPlayer.local.isAuthenticated {
-                reportScore(flipCount)
-
-            }
-        }
-    }
-
-    // Report score to Game Center (modern iOS 14+ API, no fallback)
-    func reportScore(_ score: Int) {
-        
-        GKLeaderboard.submitScore(
-            score,
-            context: 0,
-            player: GKLocalPlayer.local,
-            leaderboardIDs: [leaderboardID]
-        ) { error in
-            if let error = error {
-                print("Error reporting score: \(error.localizedDescription)")
-            } else {
-                print("Score reported successfully!")
+                gameCenterManager?.submitScore(flipCount)
             }
         }
     }
 
     // Load the current player's personal best (lowest) score from Game Center
     func loadHighScoreFromGameCenter() {
-        // Ensure the local player is authenticated
-        guard GKLocalPlayer.local.isAuthenticated else {
-            return
-        }
-
-        GKLeaderboard.loadLeaderboards(IDs: [leaderboardID]) {
-            leaderboards,
-            error in
-            if let error = error {
-                print(
-                    "Error loading leaderboard: \(error.localizedDescription)"
-                )
-                return
-            }
-            guard let leaderboard = leaderboards?.first else {
-                print("Leaderboard not found for ID: \(self.leaderboardID)")
-                return
-            }
-
-            // grab  my personal scores
-            leaderboard.loadEntries(
-                for: .global,
-                timeScope: .allTime,
-                range: NSRange(location: 1, length: 1)
-            ) { localPlayerEntry, _, _, error in
-                if let error = error {
-                    print(
-                        "Error loading local player entry: \(error.localizedDescription)"
-                    )
-                    return
+        guard let manager = gameCenterManager else { return }
+        manager.loadPersonalBest { [weak self] best in
+            guard let self = self else { return }
+            if let best = best {
+                DispatchQueue.main.async {
+                    self.updatePersonalBest(best)
                 }
-                guard let local = localPlayerEntry, local.score > 0 else {
-                    // No score submitted yet by this player
-                    return
-                }
-
-                // update personal best with what we got from game center
-                self.updatePersonalBest(Int(local.score))
             }
         }
     }
 }
+
