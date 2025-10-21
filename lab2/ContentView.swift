@@ -59,15 +59,20 @@ struct TiledCard: View {
             // we show a blue rectangle to cover the image if the card isn't face up
             cover.opacity(card.isFaceUp ? 0 : 1)
         }
-        .padding(.horizontal)
+        // this tightens the tiles a bit for some reason
+        .padding(.horizontal, 10)
+        // this is set by the wiggle effect
         .rotationEffect(rotationAngle)
+        
+        // wiggle for a bit if we match
         .onChange(of: isMatchWiggling) { _, shouldWiggle in
             guard shouldWiggle else { return }
-            performWiggle(duration: 0.5, wiggles: 4)
+            performWiggle(duration: 0.5)
         }
+        // wiggle all the tiles on win
         .onChange(of: isWinWiggling) { _, shouldWiggle in
             guard shouldWiggle else { return }
-            performWiggle(duration: 2.5, wiggles: 20)
+            performWiggle(duration: 2.0)
         }
         // do the card flipping
         // this closure stuff is funky we pass in a reference to the game model to do the work
@@ -76,9 +81,11 @@ struct TiledCard: View {
         }
     }
 
-    private func performWiggle(duration: Double, wiggles: Int) {
+    // wiggle the tile on match or win
+    private func performWiggle(duration: Double) {
         Task {
-            let singleWiggleDuration = duration / Double(wiggles)
+            let singleWiggleDuration = 0.125 //duration / Double(wiggles)
+            let wiggles = Int(duration / singleWiggleDuration)
             let animation = Animation.linear(duration: singleWiggleDuration)
             let pause = UInt64(singleWiggleDuration * 1_000_000_000)
             let wiggleAngle: Double = 4
@@ -325,10 +332,10 @@ struct ContentView: View {
                             .frame(width: layout.tileSize, height: layout.tileSize)
                         }
                     }
-                    .frame(width: max(0, layout.availableWidth), height: layout.gridHeight)
-                    .padding(.horizontal, layout.horizontalPadding)
+                    //.frame(width: max(0, layout.availableWidth), height: layout.gridHeight)
+                    //.padding(.horizontal, layout.horizontalPadding)
 
-                    Spacer(minLength: 0)
+                    //Spacer(minLength: 0)
                 }
                 .frame(
                     maxWidth: .infinity,
