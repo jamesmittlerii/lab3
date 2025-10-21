@@ -231,9 +231,6 @@ struct ContentView: View {
         let columns: [GridItem]
         let rowSpacing: CGFloat
         let tileSize: CGFloat
-        let gridHeight: CGFloat
-        let availableWidth: CGFloat
-        let horizontalPadding: CGFloat
     }
 
     @Environment(\.horizontalSizeClass) private var hSizeClass
@@ -318,7 +315,7 @@ struct ContentView: View {
                     headerView()
 
                     // Grid with tighter spacing and reduced side padding on iPhone
-                    LazyVGrid(columns: layout.columns, spacing: layout.rowSpacing) {
+                    LazyVGrid(columns: layout.columns, spacing:   layout.rowSpacing ) {
                         // loop through all the cards and build a tiledcard view
                         // we need to pass the flip function as a closure
                         ForEach(model.cards.indices, id: \.self) { idx in
@@ -329,13 +326,10 @@ struct ContentView: View {
                             ) {
                                 model.flip(cardAt: idx)
                             }
-                            .frame(width: layout.tileSize, height: layout.tileSize)
+                            .frame( height: layout.tileSize)
                         }
                     }
-                    //.frame(width: max(0, layout.availableWidth), height: layout.gridHeight)
-                    //.padding(.horizontal, layout.horizontalPadding)
-
-                    //Spacer(minLength: 0)
+                    
                 }
                 .frame(
                     maxWidth: .infinity,
@@ -445,17 +439,11 @@ struct ContentView: View {
             count: Int(cols)
         )
 
-        // The final calculated grid height (useful for aligning/positioning the grid)
-        let gridHeight = max(0, tilesTotalHeight + rowSpacing * numVSpaces)
-
+        
         return GridLayout(
             columns: columns,
             rowSpacing: rowSpacing,
-            tileSize: tileSize,
-            gridHeight: gridHeight,
-            availableWidth: availableWidth,
-            horizontalPadding: horizontalPadding
-        )
+            tileSize: tileSize )
     }
 }
 
