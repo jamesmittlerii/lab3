@@ -33,8 +33,11 @@ final class GameModel: ObservableObject {
     @Published var isWin: Bool = false
     @Published private(set) var personalBest: Int?
 
-    // A subject to publish match results: true for a match, false for a mismatch.
-    let matchResult = PassthroughSubject<Bool, Never>()
+    
+    // A subject to publish the indices of matched cards.
+    // we do a little wiggle and play a haptic
+    
+    let matchedCardIndices = PassthroughSubject<[Int], Never>()
 
     private var indicesOfFaceUp: [Int] = []
     
@@ -101,11 +104,10 @@ final class GameModel: ObservableObject {
                 self.cards[secondIdx].solved = true
                 self.indicesOfFaceUp = []
                 self.checkForWin()
-                matchResult.send(true)
+                matchedCardIndices.send([firstIdx, secondIdx])
 
             } else {
                 // Mismatch: flip back after a short delay
-                matchResult.send(false)
                 Task { [weak self] in
                     try? await Task.sleep(for: .seconds(0.9))
                     guard let self else { return }

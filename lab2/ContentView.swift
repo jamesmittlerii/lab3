@@ -35,12 +35,21 @@ struct TiledCard: View {
     // our card data structure
     let card: Card
 
+    // whether the card should be wiggling from a match
+    let isMatchWiggling: Bool
+
+    // whether the card should be wiggling because of a win
+    let isWinWiggling: Bool
+
     // the closure to call on tap
     let onTap: () -> Void
 
+    @State private var rotationAngle: Angle = .zero
+
     var body: some View {
         ZStack {
-          
+            RoundedRectangle(cornerRadius: 10)
+                           .foregroundColor(.white)
             RoundedRectangle(cornerRadius: 10)
                 .stroke(lineWidth: 3).foregroundColor(.blue)
             Image(card.content).resizable().scaledToFit().padding()
@@ -51,11 +60,36 @@ struct TiledCard: View {
             cover.opacity(card.isFaceUp ? 0 : 1)
         }
         .padding(.horizontal)
-        
+        .rotationEffect(rotationAngle)
+        .onChange(of: isMatchWiggling) { _, shouldWiggle in
+            guard shouldWiggle else { return }
+            performWiggle(duration: 0.5, wiggles: 4)
+        }
+        .onChange(of: isWinWiggling) { _, shouldWiggle in
+            guard shouldWiggle else { return }
+            performWiggle(duration: 2.5, wiggles: 20)
+        }
         // do the card flipping
         // this closure stuff is funky we pass in a reference to the game model to do the work
         .onTapGesture {
             onTap()
+        }
+    }
+
+    private func performWiggle(duration: Double, wiggles: Int) {
+        Task {
+            let singleWiggleDuration = duration / Double(wiggles)
+            let animation = Animation.linear(duration: singleWiggleDuration)
+            let pause = UInt64(singleWiggleDuration * 1_000_000_000)
+            let wiggleAngle: Double = 4
+
+            for i in 0..<wiggles {
+                let angle = (i % 2 == 0) ? wiggleAngle : -wiggleAngle
+                withAnimation(animation) { rotationAngle = .degrees(angle) }
+                try await Task.sleep(nanoseconds: pause)
+            }
+            
+            withAnimation(animation) { rotationAngle = .zero }
         }
     }
 }
@@ -209,10 +243,10 @@ struct ContentView: View {
 
     // anything with @state will refresh the UI on change
     @State private var showConfetti = false
-    @State private var gameCenterError: String?
     @State private var showingLeaderboard = false
     @State private var isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
-
+    @State private var wigglingIndices = Set<Int>()
+    
     // are we running on Ipad?
     private var isPadLayout: Bool {
         // Prefer size class, fallback to idiom
@@ -251,12 +285,7 @@ struct ContentView: View {
 
             // global leadboard icon
             Button {
-                if isGCAuthenticated {
-                    showingLeaderboard = true
-                } else {
-                    gameCenterError =
-                        "Please sign in to Game Center to view the leaderboard."
-                }
+                showingLeaderboard = true
             } label: {
                 Label("Leaderboard", systemImage: "trophy")
                     .labelStyle(.iconOnly)
@@ -286,7 +315,11 @@ struct ContentView: View {
                         // loop through all the cards and build a tiledcard view
                         // we need to pass the flip function as a closure
                         ForEach(model.cards.indices, id: \.self) { idx in
-                            TiledCard(card: model.cards[idx]) {
+                            TiledCard(
+                                card: model.cards[idx],
+                                isMatchWiggling: wigglingIndices.contains(idx),
+                                isWinWiggling: showConfetti
+                            ) {
                                 model.flip(cardAt: idx)
                             }
                             .frame(width: layout.tileSize, height: layout.tileSize)
@@ -310,16 +343,6 @@ struct ContentView: View {
                         .transition(.opacity)
                         .zIndex(1)
                 }
-
-                // show any error we got from gamecenter
-                if let gameCenterError = gameCenterError {
-                    VStack {
-                        Spacer()
-                        Text("Game Center: \(gameCenterError)")
-                            .foregroundColor(.red)
-                            .padding()
-                    }
-                }
             }
         }
         // overlay to show the global leaderboard
@@ -340,18 +363,22 @@ struct ContentView: View {
                 showConfetti = false
             }
         }
-        .onReceive(model.matchResult) { didMatch in
-            if didMatch {
-                playMatchHaptic()
-            } else {
-               // playMismatchHaptic()
+        .onReceive(model.matchedCardIndices) { indices in
+            wigglingIndices.formUnion(indices)
+            playMatchHaptic()
+            // After the animation duration, remove the indices so they stop wiggling.
+            Task {
+                // The animation takes about 0.625 seconds. Wait a bit longer.
+                try await Task.sleep(for: .seconds(0.65))
+                wigglingIndices.subtract(indices)
             }
         }
+        
         .onAppear {
             // login to game center to fetch high score
             authenticateGameCenter { error in
                 if let error = error {
-                    self.gameCenterError = error.localizedDescription
+                    print("Game Center authentication error: \(error.localizedDescription)")
                     self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
                 } else {
                     self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
