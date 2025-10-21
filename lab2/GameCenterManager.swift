@@ -81,8 +81,10 @@ class GameCenterManager: ObservableObject {
                 return nil
             }
             
+            // this stuff is async so calling is funky
             let (localPlayerEntry, _) = try await leaderboard.loadEntries(for: [GKLocalPlayer.local], timeScope: .allTime)
 
+            // seems to return 0 if no score so deal with that
             guard let score = localPlayerEntry?.score, score > 0 else {
                 return nil
             }

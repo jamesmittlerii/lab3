@@ -19,15 +19,21 @@ let allImages: [String] = {
 
 // a structure to represent a card
 struct Card: Identifiable, Equatable {
+    // unique id
     let id = UUID()
+    // the image
     let content: String
+    // are we face up?
     var isFaceUp: Bool = false
+    // did we solve...i.e. match the other card
     var solved: Bool = false
 }
 
 // this is our game model
 @MainActor
 final class GameModel: ObservableObject {
+    
+    // anything published provides notification to the UI
     @Published private(set) var cards: [Card] = []
     @Published private(set) var flipCount: Int = 0
     @Published var isWin: Bool = false
@@ -39,6 +45,7 @@ final class GameModel: ObservableObject {
     
     let matchedCardIndices = PassthroughSubject<[Int], Never>()
 
+    // keep track of which cards are flipped up
     private var indicesOfFaceUp: [Int] = []
     
     // Reference to the Game Center manager for reporting/loading scores
@@ -104,10 +111,12 @@ final class GameModel: ObservableObject {
                 self.cards[secondIdx].solved = true
                 self.indicesOfFaceUp = []
                 self.checkForWin()
+                // send these out so we can do the wiggle
                 matchedCardIndices.send([firstIdx, secondIdx])
 
             } else {
                 // Mismatch: flip back after a short delay
+                // I don't understand the weak self stuff but seems to been required
                 Task { [weak self] in
                     try? await Task.sleep(for: .seconds(0.9))
                     guard let self else { return }

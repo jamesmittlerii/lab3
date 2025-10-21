@@ -44,15 +44,22 @@ struct TiledCard: View {
     // the closure to call on tap
     let onTap: () -> Void
 
+    // we use this to wiggle the card
     @State private var rotationAngle: Angle = .zero
 
     var body: some View {
         ZStack {
+            // we need this white rectangle so the tile is legible in dark mode
             RoundedRectangle(cornerRadius: 10)
                            .foregroundColor(.white)
+            // a border
             RoundedRectangle(cornerRadius: 10)
                 .stroke(lineWidth: 3).foregroundColor(.blue)
+            // our card image
+            
             Image(card.content).resizable().scaledToFit().padding()
+            
+            // a cover to hide the card
             let cover = RoundedRectangle(cornerRadius: 10)
                 .foregroundColor(.blue)
             
@@ -82,6 +89,7 @@ struct TiledCard: View {
     }
 
     // wiggle the tile on match or win
+    // the duration of the wiggle is a variable. short wiggle for match, longer for win
     private func performWiggle(duration: Double) {
         Task {
             let singleWiggleDuration = 0.125 //duration / Double(wiggles)
@@ -235,10 +243,12 @@ struct ContentView: View {
 
     @Environment(\.horizontalSizeClass) private var hSizeClass
 
-    // our object classes
+    // our object classes for MVVM
     @StateObject private var gameCenterManager = GameCenterManager()
     @StateObject private var model: GameModel
 
+    // initialize our object classes
+    // some shenanigans because the model needs to access the game manager
     init() {
         let manager = GameCenterManager()
         _gameCenterManager = StateObject(wrappedValue: manager)
@@ -308,6 +318,7 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geo in
 
+            // do the layout calculations in a function
             let layout = calculateLayout(for: geo.size, in: hSizeClass)
 
             ZStack {
@@ -350,7 +361,9 @@ struct ContentView: View {
         .sheet(isPresented: $showingLeaderboard) {
             GameCenterView(leaderboardID: gameCenterManager.leaderboardID)
         }
+        // the confetti we throw up when we win
         .animation(.default, value: showConfetti)
+        
         // ok - we got notification back from the model that we won
         .onReceive(model.$isWin) { won in
             guard won else { return }
@@ -360,10 +373,11 @@ struct ContentView: View {
             playWinSound()
             // turn the confetti off after a bit
             Task {
-                try? await Task.sleep(for: .seconds(2.5))
+                try await Task.sleep(for: .seconds(2.5))
                 showConfetti = false
             }
         }
+        // we got a notification that we matched two cards
         .onReceive(model.matchedCardIndices) { indices in
             wigglingIndices.formUnion(indices)
             playMatchHaptic()
@@ -396,6 +410,9 @@ struct ContentView: View {
         }
     }
 
+    // so much logic to layout 4x6 for iphone/ipad
+    // my heart says this could be easier but haven't figured out how to simplify it
+    
     private func calculateLayout(for size: CGSize, in hSizeClass: UserInterfaceSizeClass?) -> GridLayout {
         // our grid sizes
         let rows: CGFloat = 6
@@ -439,7 +456,7 @@ struct ContentView: View {
             count: Int(cols)
         )
 
-        
+        // return a structure with our layout calculations
         return GridLayout(
             columns: columns,
             rowSpacing: rowSpacing,
