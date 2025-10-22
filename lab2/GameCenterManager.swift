@@ -18,38 +18,44 @@
 
  */
 
+import GameKit
 import SwiftUI
 import Combine
-import UIKit
-import GameKit
 
 // this class handles communication with game center to track scores and fetch personal bests
+@MainActor
 class GameCenterManager: ObservableObject {
     // Leaderboard identifier used across the app
     let leaderboardID = "KingOfTheHill"
-    
+
     // A published property to reflect the authentication status.
     @Published var isAuthenticated = GKLocalPlayer.local.isAuthenticated
-    
-    // A state to hold the view controller presented by GameKit, if needed.
-    @Published var authenticationVC: UIViewController? = nil
-    
-    // Call this method to begin the authentication process.
-    func authenticateUser() {
+
+    init() {
+        // Set the handler once when the manager is initialized.
+        // GameKit will call this handler whenever the authentication state changes.
         GKLocalPlayer.local.authenticateHandler = { [weak self] viewController, error in
-            if GKLocalPlayer.local.isAuthenticated {
-                self?.isAuthenticated = true
-                self?.authenticationVC = nil
-            } else if let vc = viewController {
-                self?.authenticationVC = vc
-                self?.isAuthenticated = false
-            } else {
-                self?.isAuthenticated = false
-                print("Error authenticating to Game Center: \(error?.localizedDescription ?? "Unknown error")")
+            if let vc = viewController {
+                // If GameKit provides a view controller, it means the user needs to
+                // sign in or perform some other action. We present it.
+                currentRootViewController()?.present(vc, animated: true)
+                return
             }
+
+            if let error = error {
+                print(
+                    "Error authenticating to Game Center: \(error.localizedDescription)"
+                )
+                self?.isAuthenticated = false
+                return
+            }
+
+            // If there's no view controller and no error, the authentication state
+            // has been determined.
+            self?.isAuthenticated = GKLocalPlayer.local.isAuthenticated
         }
     }
-    
+
     // Submit a score to Game Center
     func submitScore(_ score: Int) async {
         guard GKLocalPlayer.local.isAuthenticated else {
@@ -68,21 +74,24 @@ class GameCenterManager: ObservableObject {
             print("Error reporting score: \(error.localizedDescription)")
         }
     }
-    
+
     // Load the current player's personal best (lowest) score from Game Center
     func loadPersonalBest() async -> Int? {
         guard GKLocalPlayer.local.isAuthenticated else {
             return nil
         }
         do {
-            let leaderboards = try await GKLeaderboard.loadLeaderboards(IDs: [leaderboardID])
+            let leaderboards = try await GKLeaderboard.loadLeaderboards(IDs: [
+                leaderboardID
+            ])
             guard let leaderboard = leaderboards.first else {
                 print("Leaderboard not found for ID: \(self.leaderboardID)")
                 return nil
             }
-            
+
             // this stuff is async so calling is funky
-            let (localPlayerEntry, _) = try await leaderboard.loadEntries(for: [GKLocalPlayer.local], timeScope: .allTime)
+            let (localPlayerEntry, _) = try await leaderboard.loadEntries(
+                for: [GKLocalPlayer.local], timeScope: .allTime)
 
             // seems to return 0 if no score so deal with that
             guard let score = localPlayerEntry?.score, score > 0 else {

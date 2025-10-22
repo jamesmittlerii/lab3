@@ -1,29 +1,28 @@
 /**
-
+ 
  * __Partner Lab 3__
  * Jim Mittler
  * 20 October 2025
-
-
+ 
+ 
  We've updated our Game to use MVVM architecture
-
+ 
  all the game logic is moved to the GameModel class
-
+ 
  ContentView contains the UI logic and the code to support showing the global leaderboard
-
+ 
  The game connects to Game Center to keep track of personal best and show a global leaderboard of all the players
-
+ 
  We show a 4x6 grid of randomly shuffled tile pairs.
  If you match two tiles they remain face up until you complete the game.
  We show some confetti when you win.
-
+ 
  _Italic text__
  __Bold text__
  ~~Strikethrough text~~
-
+ 
  */
 
-import AudioToolbox
 import Combine
 import GameKit
 import SwiftUI
@@ -60,7 +59,7 @@ struct TiledCard: View {
             Image(card.content)
                 .resizable()
                 .scaledToFit()
-                .padding() // this keeps the image a little smaller than the tile
+                .padding()  // this keeps the image a little smaller than the tile
 
             // a cover to hide the card
             let cover = RoundedRectangle(cornerRadius: 10)
@@ -168,79 +167,7 @@ struct ConfettiView: View {
     }
 }
 
-// Helper to get the current key window’s root view controller in a scene-based app
-// this is to support showing the global leaderboard
 
-private func currentRootViewController() -> UIViewController? {
-    guard
-        let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene })
-            .first(where: { $0.activationState == .foregroundActive })
-    else {
-        return nil
-    }
-
-    let window =
-        scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first
-    return window?.rootViewController
-}
-
-// Game Center login helper
-func authenticateGameCenter(completion: ((Error?) -> Void)? = nil) {
-    GKLocalPlayer.local.authenticateHandler = { gcAuthVC, error in
-        if let vc = gcAuthVC {
-            guard let rootVC = currentRootViewController() else {
-                print(
-                    "Game Center: No rootViewController available to present authentication UI."
-                )
-                completion?(error)
-                return
-            }
-            rootVC.present(vc, animated: true)
-            completion?(error)
-            return
-        }
-        // No UI to present; just forward any error (or nil on success)
-        completion?(error)
-    }
-}
-
-// Simple haptic helpers
-private func playMatchHaptic() {
-    let generator = UINotificationFeedbackGenerator()
-    generator.notificationOccurred(.success)
-}
-
-private func playMismatchHaptic() {
-    let generator = UINotificationFeedbackGenerator()
-    generator.notificationOccurred(.warning)
-}
-
-// Win sound helper (System Sound 1322 "Bloom")
-private func playWinSound() {
-    AudioServicesPlaySystemSound(1322)
-}
-
-// our global leaderboard
-
-struct GameCenterView: UIViewControllerRepresentable {
-    let leaderboardID: String
-
-    func makeUIViewController(context: Context) -> GKGameCenterViewController {
-        // Use the supported initializer that targets a specific leaderboard.
-        let vc = GKGameCenterViewController(
-            leaderboardID: leaderboardID,
-            playerScope: .global,
-            timeScope: .allTime
-        )
-        return vc
-    }
-
-    func updateUIViewController(
-        _ uiViewController: GKGameCenterViewController,
-        context: Context
-    ) {}
-}
 
 // this is the main view for the game
 struct ContentView: View {
@@ -253,7 +180,7 @@ struct ContentView: View {
     let columns = Array(repeating: GridItem(.flexible()), count: 4)
 
     // our object classes for MVVM
-    @StateObject private var gameCenterManager = GameCenterManager()
+    @StateObject private var gameCenterManager: GameCenterManager
     @StateObject private var model: GameModel
 
     // initialize our object classes
@@ -269,11 +196,9 @@ struct ContentView: View {
     // anything with @state will refresh the UI on change
     @State private var showConfetti = false
     @State private var showingLeaderboard = false
-    @State private var isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
     @State private var wigglingIndices = Set<Int>()
 
     // Header view extracted so we can measure remaining height
-    
 
     // this is our main view -
     var body: some View {
@@ -312,19 +237,31 @@ struct ContentView: View {
 
                     // global leadboard icon
                     Button {
-                        showingLeaderboard = true
+                        Task {
+                            // Load leaderboard list (optional sanity check)
+                            do {
+                                _ = try await GKLeaderboard.loadLeaderboards(
+                                    IDs: [gameCenterManager.leaderboardID])
+                            } catch {
+                                print(
+                                    "Error loading leaderboard: \(error.localizedDescription)"
+                                )
+                            }
+                            // Present Game Center leaderboard view controller
+                            presentLeaderboard()
+                        }
                     } label: {
                         Label("Leaderboard", systemImage: "trophy")
                             .labelStyle(.iconOnly)
                             .foregroundColor(
-                                isGCAuthenticated ? .orange : .gray
+                                gameCenterManager.isAuthenticated ? .orange : .gray
                             )
                             .accessibilityLabel("Show Leaderboard")
                             .font(
                                 horizontalSizeClass == .regular ? .title : .body
                             )
                     }
-                    .disabled(!isGCAuthenticated)
+                    .disabled(!gameCenterManager.isAuthenticated)
                     .help("Show global leaderboard")
                 }
                 .padding()
@@ -375,10 +312,6 @@ struct ContentView: View {
                     .zIndex(1)
             }
         }
-        // overlay to show the global leaderboard
-        .sheet(isPresented: $showingLeaderboard) {
-            GameCenterView(leaderboardID: gameCenterManager.leaderboardID)
-        }
         // the confetti we throw up when we win
         .animation(.default, value: showConfetti)
 
@@ -406,31 +339,35 @@ struct ContentView: View {
                 wigglingIndices.subtract(indices)
             }
         }
+        
+    }
 
-        .onAppear {
-            // login to game center to fetch high score
-            authenticateGameCenter { error in
-                if let error = error {
-                    print(
-                        "Game Center authentication error: \(error.localizedDescription)"
-                    )
-                    self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
-                } else {
-                    self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
-                    // After successful auth, ask the model to refresh personal best.
-                    if self.isGCAuthenticated {
-                        model.loadHighScoreFromGameCenter()
-                    }
-                }
-                print(
-                    "GC isAuthenticated:",
-                    GKLocalPlayer.local.isAuthenticated
-                )
-            }
+    // Present GKGameCenterViewController for the leaderboard
+    @MainActor
+    private func presentLeaderboard() {
+        guard let rootVC = currentRootViewController() else {
+            print("No root view controller to present Game Center.")
+            return
         }
+        let gcVC = GKGameCenterViewController(
+            leaderboardID: gameCenterManager.leaderboardID, playerScope: .global,
+            timeScope: .allTime)
+        gcVC.gameCenterDelegate = GameCenterDelegate.shared
+        rootVC.present(gcVC, animated: true)
+    }
+}
+
+// Simple shared delegate to dismiss GKGameCenterViewController
+final class GameCenterDelegate: NSObject, GKGameCenterControllerDelegate {
+    static let shared = GameCenterDelegate()
+    func gameCenterViewControllerDidFinish(
+        _ gameCenterViewController: GKGameCenterViewController
+    ) {
+        gameCenterViewController.dismiss(animated: true)
     }
 }
 
 #Preview {
     ContentView()
 }
+
