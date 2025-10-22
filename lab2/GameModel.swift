@@ -1,9 +1,31 @@
-//
-//  GameModel.swift
-//  lab2
-//
-//  Created by cisstudent on 10/7/25.
-//
+/**
+ 
+ * __Partner Lab 3__
+ * Jim Mittler
+ * 20 October 2025
+ 
+ 
+ We've updated our Game to use MVVM architecture
+ 
+ all the game logic is moved to the GameModel class
+ 
+ ContentView contains the UI logic and the code to support showing the global leaderboard
+ 
+ The game connects to Game Center to keep track of personal best and show a global leaderboard of all the players
+ 
+ We show a 4x6 grid of randomly shuffled tile pairs.
+ If you match two tiles they remain face up until you complete the game.
+ We show some confetti when you win.
+ 
+ This class contains the GameModel logic
+ 
+ It's all pretty straightforward but the interaction with GameCenter is a little tricky ...see the code
+ 
+ _Italic text__
+ __Bold text__
+ ~~Strikethrough text~~
+ 
+ */
 
 import Combine
 import Foundation
@@ -30,17 +52,18 @@ struct Card: Identifiable, Equatable {
 }
 
 // this is our game model
+// we use main actor to prevent race conditions
 @MainActor
 final class GameModel: ObservableObject {
 
     // anything published provides notification to the UI
-    @Published private(set) var cards: [Card] = []
-    @Published private(set) var flipCount: Int = 0
-    @Published var isWin: Bool = false
-    @Published private(set) var personalBest: Int?
+    @Published private(set) var cards: [Card] = []      // our cards
+    @Published private(set) var flipCount: Int = 0      // our score
+    @Published var isWin: Bool = false                  // did we win i.e. match all the cards?
+    @Published private(set) var personalBest: Int?      // what is our personal best score?
 
     // A subject to publish the indices of matched cards.
-    // we do a little wiggle and play a haptic
+    // we do a little wiggle in the UI and play a haptic
 
     let matchedCardIndices = PassthroughSubject<[Int], Never>()
 
@@ -55,7 +78,11 @@ final class GameModel: ObservableObject {
     init(gameCenterManager: GameCenterManager?) {
         self.gameCenterManager = gameCenterManager
 
-        // Observe authentication changes from the GameCenterManager
+        // Observe authentication changes from the GameCenterManager - it's async so messy
+        // we are waiting for notification from game center manager that we've authenticated...then we can udate our personal best
+        // the cancellables stuff ensure our references are safe from deallocation until we release this class
+        // probably overkill but seems to be the recommended approach
+        
         gameCenterManager?.$isAuthenticated
             .sink { [weak self] isAuthenticated in
                 if isAuthenticated {
@@ -64,6 +91,7 @@ final class GameModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // start a new game when the class initializes
         newGame()
     }
 
@@ -88,12 +116,13 @@ final class GameModel: ObservableObject {
         loadHighScoreFromGameCenter()
     }
 
-    // here we flip the cards
-    // we are passing the index around instead of the actual card. I'm not sure which is better
+    // here we flip a card
+    // we are passing the index around instead of the actual card. I'm not sure which is better but this works
 
     func flip(cardAt index: Int) {
 
         // sanity check
+        // this guard idiom is nice btw
         guard cards.indices.contains(index) else { return }
 
         // if the card is already face up or the card is solved and we haven't got two cards flipped up, then we are ok
@@ -115,13 +144,13 @@ final class GameModel: ObservableObject {
             let firstIdx = indicesOfFaceUp[0]
             let secondIdx = indicesOfFaceUp[1]
 
-            // matched! track that and check for win
+            // if we've matched, mark those cards as solved and check for win
             if cards[firstIdx].content == cards[secondIdx].content {
                 self.cards[firstIdx].solved = true
                 self.cards[secondIdx].solved = true
                 self.indicesOfFaceUp = []
                 self.checkForWin()
-                // send these out so we can do the wiggle
+                // send these out to the UI so we can do the wiggle
                 matchedCardIndices.send([firstIdx, secondIdx])
 
             } else {
@@ -167,6 +196,8 @@ final class GameModel: ObservableObject {
 
             updatePersonalBest(flipCount)
             // Submit the score (using flipCount) to Game Center when the player wins.
+            // game center doesn't care if we don't send personal best - it will figure it out
+            
             if GKLocalPlayer.local.isAuthenticated {
                 Task {
                     await gameCenterManager?.submitScore(flipCount)
@@ -178,8 +209,11 @@ final class GameModel: ObservableObject {
     // Load the current player's personal best (lowest) score from Game Center
     func loadHighScoreFromGameCenter() {
         Task {
+            // are we authenticated?
             guard let manager = gameCenterManager, manager.isAuthenticated
             else { return }
+            
+            // wait for game manager to tell us our best score
             if let best = await manager.loadPersonalBest() {
                 self.updatePersonalBest(best)
             }

@@ -195,7 +195,8 @@ struct ContentView: View {
     @State private var showingLeaderboard = false
     @State private var wigglingIndices = Set<Int>()
     
-    // 1. Define a struct to hold all the calculated grid parameters
+    // the grid layout logic got nasty so moved to a function
+    // this structure returns the calculations
     struct GridParameters {
         let itemWidth: CGFloat
         let itemHeight: CGFloat
@@ -220,7 +221,10 @@ struct ContentView: View {
         let isRegular = horizontalSizeClass == .regular
         let spacing: CGFloat = isRegular ? 24 : 12
 
-        // --- Grid Dimensions ---
+        // we use 4x6 for portrait
+        // 8x3 on phone landscape and 6x4 on ipad landscape
+        // that seemed to look best
+        
         let aspectRatio: CGFloat = 2.0 / 3.0 // Width / Height
         let columnCount: Int = isLandscape ? (isPhone ? 8 : 6) : 4
         let rowCount: Int = isLandscape ? (isPhone ? 3 : 4) : 6
@@ -248,12 +252,14 @@ struct ContentView: View {
         ? (widthFromWidthConstraint, heightFromWidthConstraint)   // Width is limiting
             : (widthFromHeightConstraint, heightFromHeightConstraint) // Height is limiting
 
-        // --- Final GridItem Array ---
+        // create our grid item array
+        // we were very determined to find the best itemWidth
         let columns = Array(
             repeating: GridItem(.fixed(itemWidth), spacing: spacing),
             count: columnCount
         )
         
+        // kick back our calculations
         return GridParameters(
             itemWidth: itemWidth,
             itemHeight: itemHeight,
@@ -264,10 +270,13 @@ struct ContentView: View {
     }
 
     
-    // this is our main view -
+    // this is our main view...finally!
     var body: some View {
         ZStack {
             VStack(spacing: 8) {
+                
+                // top bar is info and buttons
+                
                 HStack(spacing: 8) {
                     Text("Flips: \(model.flipCount)")
                         .font(
@@ -330,19 +339,27 @@ struct ContentView: View {
                 }
                 .padding()
 
+                // do the grid via GeometryReader and function
+                
                 GeometryReader { geometry in
                     let params = calculateGridParameters(
                         geometry: geometry,
                         horizontalSizeClass: horizontalSizeClass
                     )
 
+                    // trusty LazyVGrid
                     LazyVGrid(columns: params.columns, spacing: params.spacing) {
+                        
+                        // spin through our cards
+                        // send each TileCard our wiggle flags
+                        
                         ForEach(model.cards.indices, id: \.self) { idx in
                             TiledCard(
                                 card: model.cards[idx],
                                 isMatchWiggling: wigglingIndices.contains(idx),
                                 isWinWiggling: showConfetti
                             ) {
+                                // secret sauce closure to handle flip card logic in the model
                                 model.flip(cardAt: idx)
                             }
                             // Set the frame to our calculated size.
@@ -357,6 +374,7 @@ struct ContentView: View {
             .padding()
             
             // if we won, show some confetti
+            // this floats on top
             if showConfetti {
                 ConfettiView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -382,6 +400,8 @@ struct ContentView: View {
         }
         // we got a notification that we matched two cards
         .onReceive(model.matchedCardIndices) { indices in
+            
+            // wiggling indices gets passed to isMatchWiggling via @State trickery
             wigglingIndices.formUnion(indices)
             playMatchHaptic()
             // After the animation duration, remove the indices so they stop wiggling.
@@ -395,6 +415,7 @@ struct ContentView: View {
     }
 
     // Present GKGameCenterViewController for the leaderboard
+    // these function and class seem to be the preferred mechanism on newest IOS
     @MainActor
     private func presentLeaderboard() {
         guard let rootVC = currentRootViewController() else {

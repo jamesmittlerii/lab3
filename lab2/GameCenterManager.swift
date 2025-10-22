@@ -23,6 +23,8 @@ import SwiftUI
 import Combine
 
 // this class handles communication with game center to track scores and fetch personal bests
+
+// use MainActor to stay on the main thread and avoid race conditions
 @MainActor
 class GameCenterManager: ObservableObject {
     // Leaderboard identifier used across the app
@@ -63,6 +65,7 @@ class GameCenterManager: ObservableObject {
             return
         }
         do {
+            // send over our score
             try await GKLeaderboard.submitScore(
                 score,
                 context: 0,
