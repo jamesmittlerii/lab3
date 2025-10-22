@@ -176,9 +176,6 @@ struct ContentView: View {
     // unfortunately we need to tweak because the screen ratios and sizes are so different
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    // Define a fixed number of columns for the grid (4x6)
-    let columns = Array(repeating: GridItem(.flexible()), count: 4)
-
     // our object classes for MVVM
     @StateObject private var gameCenterManager: GameCenterManager
     @StateObject private var model: GameModel
@@ -268,17 +265,31 @@ struct ContentView: View {
 
                 GeometryReader { geometry in
 
-                    // use more spacing on ipad
-                    // calcuate our item height so we can size the grid
-                    // we don't want scrolling
+                    // use more spacing on iPad
+                    // size tiles by HEIGHT (original behavior)
 
+                    let isLandscape = geometry.size.width > geometry.size.height
+                    let isPhone = UIDevice.current.userInterfaceIdiom == .phone
                     let spacing: CGFloat =
                         horizontalSizeClass == .regular ? 24 : 12
-                    let numberOfRows: CGFloat = 6  // 24 items in 4 columns
+
+                    // Portrait: 4x6
+                    // Landscape on iPhone: 8x3
+                    // Landscape on iPad (or other): 6x4
+                    let columnCount = isLandscape ? (isPhone ? 8 : 6) : 4
+                    let numberOfRows: CGFloat = isLandscape ? (isPhone ? 3 : 4) : 6
+
+                    // Height-driven sizing
                     let totalVerticalSpacing = spacing * (numberOfRows - 1)
                     let itemHeight =
                         (geometry.size.height - totalVerticalSpacing)
                         / numberOfRows
+
+                    // Make column spacing equal to row spacing
+                    let columns = Array(
+                        repeating: GridItem(.flexible(), spacing: spacing),
+                        count: columnCount
+                    )
 
                     LazyVGrid(columns: columns, spacing: spacing) {
                         ForEach(model.cards.indices, id: \.self) { idx in
@@ -298,11 +309,12 @@ struct ContentView: View {
                             .frame(height: max(0, itemHeight))
                         }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .padding()
             // cap the width at 600 so the grid doesn't stretch too far out on ipad
-            .frame(maxWidth: 600, maxHeight: .infinity)
+            //.frame(maxWidth: 600, maxHeight: .infinity)
 
             // if we won, show some confetti
             if showConfetti {
@@ -370,4 +382,3 @@ final class GameCenterDelegate: NSObject, GKGameCenterControllerDelegate {
 #Preview {
     ContentView()
 }
-
