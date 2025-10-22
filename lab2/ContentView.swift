@@ -264,30 +264,40 @@ struct ContentView: View {
                 .padding()
 
                 GeometryReader { geometry in
-
-                    // use more spacing on iPad
-                    // size tiles by HEIGHT (original behavior)
-
                     let isLandscape = geometry.size.width > geometry.size.height
                     let isPhone = UIDevice.current.userInterfaceIdiom == .phone
-                    let spacing: CGFloat =
-                        horizontalSizeClass == .regular ? 24 : 12
+                    let spacing: CGFloat = horizontalSizeClass == .regular ? 24 : 12
 
-                    // Portrait: 4x6
-                    // Landscape on iPhone: 8x3
-                    // Landscape on iPad (or other): 6x4
-                    let columnCount = isLandscape ? (isPhone ? 8 : 6) : 4
-                    let numberOfRows: CGFloat = isLandscape ? (isPhone ? 3 : 4) : 6
+                    // Define grid dimensions based on orientation and device
+                    let aspectRatio: CGFloat = 2.0 / 3.0
+                    let columnCount: Int = isLandscape ? (isPhone ? 8 : 6) : 4
+                    let rowCount: CGFloat = isLandscape ? (isPhone ? 3 : 4) : 6
 
-                    // Height-driven sizing
-                    let totalVerticalSpacing = spacing * (numberOfRows - 1)
-                    let itemHeight =
-                        (geometry.size.height - totalVerticalSpacing)
-                        / numberOfRows
+                    // Calculate total spacing needed
+                    let totalHorizontalSpacing = spacing * (CGFloat(columnCount) - 1)
+                    let totalVerticalSpacing = spacing * (rowCount - 1)
 
-                    // Make column spacing equal to row spacing
+                    // Calculate available space for the tiles themselves
+                    let availableWidth = geometry.size.width - totalHorizontalSpacing
+                    let availableHeight = geometry.size.height - totalVerticalSpacing
+
+                    // Calculate potential tile size based on both width and height constraints
+                    let widthFromWidthConstraint = availableWidth / CGFloat(columnCount)
+                    let heightFromWidthConstraint = widthFromWidthConstraint / aspectRatio
+
+                    let heightFromHeightConstraint = availableHeight / rowCount
+                    let widthFromHeightConstraint = heightFromHeightConstraint * aspectRatio
+                    
+                    // Choose the smaller of the two potential sizes to ensure the grid fits
+                    let sizeTuple: (CGFloat, CGFloat) =
+                        (heightFromWidthConstraint <= heightFromHeightConstraint)
+                        ? (widthFromWidthConstraint, heightFromWidthConstraint)   // Width is limiting
+                        : (widthFromHeightConstraint, heightFromHeightConstraint) // Height is limiting
+                    let (itemWidth, itemHeight) = sizeTuple
+
+                    // Define grid columns with a fixed size to ensure uniform spacing
                     let columns = Array(
-                        repeating: GridItem(.flexible(), spacing: spacing),
+                        repeating: GridItem(.fixed(itemWidth), spacing: spacing),
                         count: columnCount
                     )
 
@@ -300,15 +310,12 @@ struct ContentView: View {
                             ) {
                                 model.flip(cardAt: idx)
                             }
-                            // keep a nice ratio so the tiles look like tiles
-                            .aspectRatio(
-                                CGSize(width: 2, height: 3),
-                                contentMode: .fit
-                            )
-                            // set to our computed height
-                            .frame(height: max(0, itemHeight))
+                            // Set the frame to our calculated size.
+                            // The aspect ratio is already handled in the calculation.
+                            .frame(width: itemWidth, height: itemHeight)
                         }
                     }
+                    // Center the grid within the available space
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
