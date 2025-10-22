@@ -194,9 +194,76 @@ struct ContentView: View {
     @State private var showConfetti = false
     @State private var showingLeaderboard = false
     @State private var wigglingIndices = Set<Int>()
+    
+    // 1. Define a struct to hold all the calculated grid parameters
+    struct GridParameters {
+        let itemWidth: CGFloat
+        let itemHeight: CGFloat
+        let columnCount: Int
+        let spacing: CGFloat
+        let columns: [GridItem]
+    }
 
-    // Header view extracted so we can measure remaining height
+    // this is the logic to make the grid look nice
+    // unfortunately it's a nightmare so it lives in a function
+    
+    @MainActor // Use @MainActor since it uses UIDevice.current
+    private func calculateGridParameters(
+        geometry: GeometryProxy,
+        horizontalSizeClass: UserInterfaceSizeClass?
+    ) -> GridParameters {
+        
+        // --- Setup and Context ---
+        let isLandscape = geometry.size.width > geometry.size.height
+        let isPhone = UIDevice.current.userInterfaceIdiom == .phone
+        // Use optional chaining with a fallback for horizontalSizeClass
+        let isRegular = horizontalSizeClass == .regular
+        let spacing: CGFloat = isRegular ? 24 : 12
 
+        // --- Grid Dimensions ---
+        let aspectRatio: CGFloat = 2.0 / 3.0 // Width / Height
+        let columnCount: Int = isLandscape ? (isPhone ? 8 : 6) : 4
+        let rowCount: Int = isLandscape ? (isPhone ? 3 : 4) : 6
+
+        // --- Available Space Calculation ---
+        let totalHorizontalSpacing = spacing * (CGFloat(columnCount) - 1)
+        let totalVerticalSpacing = spacing * (CGFloat(rowCount) - 1)
+
+        let availableWidth = max(0, geometry.size.width - totalHorizontalSpacing)
+        let availableHeight = max(0, geometry.size.height - totalVerticalSpacing)
+
+        // --- Tile Size Calculation (Constrained by Width and Height) ---
+        
+        // Size if constrained by width
+        let widthFromWidthConstraint = availableWidth / CGFloat(columnCount)
+        let heightFromWidthConstraint = widthFromWidthConstraint / aspectRatio
+
+        // Size if constrained by height
+        let heightFromHeightConstraint = availableHeight / CGFloat(rowCount)
+        let widthFromHeightConstraint = heightFromHeightConstraint * aspectRatio
+        
+        // Choose the smaller size to ensure the grid fits entirely
+        let (itemWidth, itemHeight): (CGFloat, CGFloat) =
+            (heightFromWidthConstraint <= heightFromHeightConstraint)
+        ? (widthFromWidthConstraint, heightFromWidthConstraint)   // Width is limiting
+            : (widthFromHeightConstraint, heightFromHeightConstraint) // Height is limiting
+
+        // --- Final GridItem Array ---
+        let columns = Array(
+            repeating: GridItem(.fixed(itemWidth), spacing: spacing),
+            count: columnCount
+        )
+        
+        return GridParameters(
+            itemWidth: itemWidth,
+            itemHeight: itemHeight,
+            columnCount: columnCount,
+            spacing: spacing,
+            columns: columns
+        )
+    }
+
+    
     // this is our main view -
     var body: some View {
         ZStack {
@@ -264,44 +331,12 @@ struct ContentView: View {
                 .padding()
 
                 GeometryReader { geometry in
-                    let isLandscape = geometry.size.width > geometry.size.height
-                    let isPhone = UIDevice.current.userInterfaceIdiom == .phone
-                    let spacing: CGFloat = horizontalSizeClass == .regular ? 24 : 12
-
-                    // Define grid dimensions based on orientation and device
-                    let aspectRatio: CGFloat = 2.0 / 3.0
-                    let columnCount: Int = isLandscape ? (isPhone ? 8 : 6) : 4
-                    let rowCount: CGFloat = isLandscape ? (isPhone ? 3 : 4) : 6
-
-                    // Calculate total spacing needed
-                    let totalHorizontalSpacing = spacing * (CGFloat(columnCount) - 1)
-                    let totalVerticalSpacing = spacing * (rowCount - 1)
-
-                    // Calculate available space for the tiles themselves
-                    let availableWidth = geometry.size.width - totalHorizontalSpacing
-                    let availableHeight = geometry.size.height - totalVerticalSpacing
-
-                    // Calculate potential tile size based on both width and height constraints
-                    let widthFromWidthConstraint = availableWidth / CGFloat(columnCount)
-                    let heightFromWidthConstraint = widthFromWidthConstraint / aspectRatio
-
-                    let heightFromHeightConstraint = availableHeight / rowCount
-                    let widthFromHeightConstraint = heightFromHeightConstraint * aspectRatio
-                    
-                    // Choose the smaller of the two potential sizes to ensure the grid fits
-                    let sizeTuple: (CGFloat, CGFloat) =
-                        (heightFromWidthConstraint <= heightFromHeightConstraint)
-                        ? (widthFromWidthConstraint, heightFromWidthConstraint)   // Width is limiting
-                        : (widthFromHeightConstraint, heightFromHeightConstraint) // Height is limiting
-                    let (itemWidth, itemHeight) = sizeTuple
-
-                    // Define grid columns with a fixed size to ensure uniform spacing
-                    let columns = Array(
-                        repeating: GridItem(.fixed(itemWidth), spacing: spacing),
-                        count: columnCount
+                    let params = calculateGridParameters(
+                        geometry: geometry,
+                        horizontalSizeClass: horizontalSizeClass
                     )
 
-                    LazyVGrid(columns: columns, spacing: spacing) {
+                    LazyVGrid(columns: params.columns, spacing: params.spacing) {
                         ForEach(model.cards.indices, id: \.self) { idx in
                             TiledCard(
                                 card: model.cards[idx],
@@ -312,7 +347,7 @@ struct ContentView: View {
                             }
                             // Set the frame to our calculated size.
                             // The aspect ratio is already handled in the calculation.
-                            .frame(width: itemWidth, height: itemHeight)
+                            .frame(width: params.itemWidth, height: params.itemHeight)
                         }
                     }
                     // Center the grid within the available space
@@ -320,9 +355,7 @@ struct ContentView: View {
                 }
             }
             .padding()
-            // cap the width at 600 so the grid doesn't stretch too far out on ipad
-            //.frame(maxWidth: 600, maxHeight: .infinity)
-
+            
             // if we won, show some confetti
             if showConfetti {
                 ConfettiView()
