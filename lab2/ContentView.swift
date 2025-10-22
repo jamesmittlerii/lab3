@@ -6,27 +6,27 @@
 
 
  We've updated our Game to use MVVM architecture
- 
+
  all the game logic is moved to the GameModel class
- 
+
  ContentView contains the UI logic and the code to support showing the global leaderboard
- 
+
  The game connects to Game Center to keep track of personal best and show a global leaderboard of all the players
- 
+
  We show a 4x6 grid of randomly shuffled tile pairs.
  If you match two tiles they remain face up until you complete the game.
  We show some confetti when you win.
 
- _Italic text_
+ _Italic text__
  __Bold text__
  ~~Strikethrough text~~
 
  */
 
 import AudioToolbox
+import Combine
 import GameKit
 import SwiftUI
-import Combine
 
 /* this is our structure for the tiled card in the UI */
 
@@ -51,26 +51,29 @@ struct TiledCard: View {
         ZStack {
             // we need this white rectangle so the tile is legible in dark mode
             RoundedRectangle(cornerRadius: 10)
-                           .foregroundColor(.white)
+                .foregroundColor(.white)
             // a border
             RoundedRectangle(cornerRadius: 10)
                 .stroke(lineWidth: 3).foregroundColor(.blue)
             // our card image
-            
-            Image(card.content).resizable().scaledToFit().padding()
-            
+
+            Image(card.content)
+                .resizable()
+                .scaledToFit()
+                .padding() // this keeps the image a little smaller than the tile
+
             // a cover to hide the card
             let cover = RoundedRectangle(cornerRadius: 10)
                 .foregroundColor(.blue)
-            
+
             // we show a blue rectangle to cover the image if the card isn't face up
             cover.opacity(card.isFaceUp ? 0 : 1)
         }
-        // this tightens the tiles a bit for some reason
-        .padding(.horizontal, 10)
+        .frame(minWidth: 0, maxWidth: .infinity)
+        .frame(maxHeight: .infinity)
         // this is set by the wiggle effect
         .rotationEffect(rotationAngle)
-        
+
         // wiggle for a bit if we match
         .onChange(of: isMatchWiggling) { _, shouldWiggle in
             guard shouldWiggle else { return }
@@ -92,18 +95,20 @@ struct TiledCard: View {
     // the duration of the wiggle is a variable. short wiggle for match, longer for win
     private func performWiggle(duration: Double) {
         Task {
-            let singleWiggleDuration = 0.125 //duration / Double(wiggles)
+            let singleWiggleDuration = 0.125  //duration / Double(wiggles)
             let wiggles = Int(duration / singleWiggleDuration)
             let animation = Animation.linear(duration: singleWiggleDuration)
             let pause = UInt64(singleWiggleDuration * 1_000_000_000)
             let wiggleAngle: Double = 4
 
+            // rotate back and forth however many times
             for i in 0..<wiggles {
                 let angle = (i % 2 == 0) ? wiggleAngle : -wiggleAngle
                 withAnimation(animation) { rotationAngle = .degrees(angle) }
                 try await Task.sleep(nanoseconds: pause)
             }
-            
+
+            // reset to zero
             withAnimation(animation) { rotationAngle = .zero }
         }
     }
@@ -175,7 +180,8 @@ private func currentRootViewController() -> UIViewController? {
         return nil
     }
 
-    let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first
+    let window =
+        scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first
     return window?.rootViewController
 }
 
@@ -184,7 +190,9 @@ func authenticateGameCenter(completion: ((Error?) -> Void)? = nil) {
     GKLocalPlayer.local.authenticateHandler = { gcAuthVC, error in
         if let vc = gcAuthVC {
             guard let rootVC = currentRootViewController() else {
-                print("Game Center: No rootViewController available to present authentication UI.")
+                print(
+                    "Game Center: No rootViewController available to present authentication UI."
+                )
                 completion?(error)
                 return
             }
@@ -228,20 +236,21 @@ struct GameCenterView: UIViewControllerRepresentable {
         return vc
     }
 
-    func updateUIViewController(_ uiViewController: GKGameCenterViewController, context: Context) {}
+    func updateUIViewController(
+        _ uiViewController: GKGameCenterViewController,
+        context: Context
+    ) {}
 }
 
 // this is the main view for the game
 struct ContentView: View {
 
-    // A structure to hold the calculated layout parameters for our grid.
-    private struct GridLayout {
-        let columns: [GridItem]
-        let rowSpacing: CGFloat
-        let tileSize: CGFloat
-    }
+    // use a variable to determine if we are iphone or ipad
+    // unfortunately we need to tweak because the screen ratios and sizes are so different
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    @Environment(\.horizontalSizeClass) private var hSizeClass
+    // Define a fixed number of columns for the grid (4x6)
+    let columns = Array(repeating: GridItem(.flexible()), count: 4)
 
     // our object classes for MVVM
     @StateObject private var gameCenterManager = GameCenterManager()
@@ -252,7 +261,9 @@ struct ContentView: View {
     init() {
         let manager = GameCenterManager()
         _gameCenterManager = StateObject(wrappedValue: manager)
-        _model = StateObject(wrappedValue: GameModel(gameCenterManager: manager))
+        _model = StateObject(
+            wrappedValue: GameModel(gameCenterManager: manager)
+        )
     }
 
     // anything with @state will refresh the UI on change
@@ -260,75 +271,79 @@ struct ContentView: View {
     @State private var showingLeaderboard = false
     @State private var isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
     @State private var wigglingIndices = Set<Int>()
-    
-    // are we running on Ipad?
-    private var isPadLayout: Bool {
-        // Prefer size class, fallback to idiom
-        if let hSizeClass, hSizeClass == .regular { return true }
-        return UIDevice.current.userInterfaceIdiom == .pad
-    }
 
     // Header view extracted so we can measure remaining height
-    @ViewBuilder
-    private func headerView() -> some View {
-        HStack(spacing: 8) {
-            Text("Flips: \(model.flipCount)")
-                .font(.headline)
-                .foregroundColor(.blue)
-            Text(
-                {
-                    if let best = model.personalBest {
-                        return "High Score: \(best)"
-                    } else {
-                        return "High Score: --"
-                    }
-                }()
-            )
-            .font(.headline)
-            .foregroundColor(.green)
-
-            // new game icon
-            Button {
-                model.newGame()
-            } label: {
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .foregroundColor(.blue)
-                    .accessibilityLabel("New Game")
-            }
-            .help("Start a new game")
-
-            // global leadboard icon
-            Button {
-                showingLeaderboard = true
-            } label: {
-                Label("Leaderboard", systemImage: "trophy")
-                    .labelStyle(.iconOnly)
-                    .foregroundColor(
-                        isGCAuthenticated ? .orange : .gray
-                    )
-                    .accessibilityLabel("Show Leaderboard")
-            }
-            .disabled(!isGCAuthenticated)
-            .help("Show global leaderboard")
-        }
-        .padding(.top, 12)
-    }
+    
 
     // this is our main view -
     var body: some View {
-        GeometryReader { geo in
+        ZStack {
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Text("Flips: \(model.flipCount)")
+                        .font(
+                            horizontalSizeClass == .regular ? .title : .headline
+                        )
+                        .foregroundColor(.blue)
+                    Text(
+                        {
+                            if let best = model.personalBest {
+                                return "High Score: \(best)"
+                            } else {
+                                return "High Score: --"
+                            }
+                        }()
+                    )
+                    .font(horizontalSizeClass == .regular ? .title : .headline)
+                    .foregroundColor(.green)
 
-            // do the layout calculations in a function
-            let layout = calculateLayout(for: geo.size, in: hSizeClass)
+                    // new game icon
+                    Button {
+                        model.newGame()
+                    } label: {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .foregroundColor(.blue)
+                            .accessibilityLabel("New Game")
+                            .font(
+                                horizontalSizeClass == .regular ? .title : .body
+                            )
+                    }
+                    .help("Start a new game")
 
-            ZStack {
-                VStack(spacing: 8) {
-                    headerView()
+                    // global leadboard icon
+                    Button {
+                        showingLeaderboard = true
+                    } label: {
+                        Label("Leaderboard", systemImage: "trophy")
+                            .labelStyle(.iconOnly)
+                            .foregroundColor(
+                                isGCAuthenticated ? .orange : .gray
+                            )
+                            .accessibilityLabel("Show Leaderboard")
+                            .font(
+                                horizontalSizeClass == .regular ? .title : .body
+                            )
+                    }
+                    .disabled(!isGCAuthenticated)
+                    .help("Show global leaderboard")
+                }
+                .padding()
 
-                    // Grid with tighter spacing and reduced side padding on iPhone
-                    LazyVGrid(columns: layout.columns, spacing:   layout.rowSpacing ) {
-                        // loop through all the cards and build a tiledcard view
-                        // we need to pass the flip function as a closure
+                GeometryReader { geometry in
+
+                    // use more spacing on ipad
+                    // calcuate our item height so we can size the grid
+                    // we don't want scrolling
+
+                    let spacing: CGFloat =
+                        horizontalSizeClass == .regular ? 24 : 12
+                    let numberOfRows: CGFloat = 6  // 24 items in 4 columns
+                    let totalVerticalSpacing = spacing * (numberOfRows - 1)
+                    let itemHeight =
+                        (geometry.size.height - totalVerticalSpacing)
+                        / numberOfRows
+
+                    LazyVGrid(columns: columns, spacing: spacing) {
                         ForEach(model.cards.indices, id: \.self) { idx in
                             TiledCard(
                                 card: model.cards[idx],
@@ -337,24 +352,27 @@ struct ContentView: View {
                             ) {
                                 model.flip(cardAt: idx)
                             }
-                            .frame( height: layout.tileSize)
+                            // keep a nice ratio so the tiles look like tiles
+                            .aspectRatio(
+                                CGSize(width: 2, height: 3),
+                                contentMode: .fit
+                            )
+                            // set to our computed height
+                            .frame(height: max(0, itemHeight))
                         }
                     }
-                    
                 }
-                .frame(
-                    maxWidth: .infinity,
-                    maxHeight: .infinity,
-                    alignment: .top
-                )
+            }
+            .padding()
+            // cap the width at 600 so the grid doesn't stretch too far out on ipad
+            .frame(maxWidth: 600, maxHeight: .infinity)
 
-                // if we won, show some confetti
-                if showConfetti {
-                    ConfettiView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .transition(.opacity)
-                        .zIndex(1)
-                }
+            // if we won, show some confetti
+            if showConfetti {
+                ConfettiView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .transition(.opacity)
+                    .zIndex(1)
             }
         }
         // overlay to show the global leaderboard
@@ -363,7 +381,7 @@ struct ContentView: View {
         }
         // the confetti we throw up when we win
         .animation(.default, value: showConfetti)
-        
+
         // ok - we got notification back from the model that we won
         .onReceive(model.$isWin) { won in
             guard won else { return }
@@ -388,12 +406,14 @@ struct ContentView: View {
                 wigglingIndices.subtract(indices)
             }
         }
-        
+
         .onAppear {
             // login to game center to fetch high score
             authenticateGameCenter { error in
                 if let error = error {
-                    print("Game Center authentication error: \(error.localizedDescription)")
+                    print(
+                        "Game Center authentication error: \(error.localizedDescription)"
+                    )
                     self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
                 } else {
                     self.isGCAuthenticated = GKLocalPlayer.local.isAuthenticated
@@ -408,59 +428,6 @@ struct ContentView: View {
                 )
             }
         }
-    }
-
-    // so much logic to layout 4x6 for iphone/ipad
-    // my heart says this could be easier but haven't figured out how to simplify it
-    
-    private func calculateLayout(for size: CGSize, in hSizeClass: UserInterfaceSizeClass?) -> GridLayout {
-        // our grid sizes
-        let rows: CGFloat = 6
-        let cols: CGFloat = 4
-        let numHSpaces = cols - 1
-        let numVSpaces = rows - 1
-
-        let isCompact = (hSizeClass == .compact)
-        
-        // Tighter margins/gaps on compact devices
-        let horizontalPadding: CGFloat = isCompact ? 0 : 12
-        let interItemSpacing: CGFloat = isCompact ? 0 : 12
-
-        // Smaller header estimate on compact devices
-        let estimatedHeaderHeight: CGFloat = isCompact ? 36 : 56
-
-        // --- Available Area Calculation ---
-        let availableWidth = size.width - 2 * horizontalPadding
-        let availableHeight = size.height - estimatedHeaderHeight
-
-        // --- Tile Size Calculation ---
-        let widthLimitedTile = (availableWidth - interItemSpacing * numHSpaces) / cols
-        let heightLimitedTile = (availableHeight - interItemSpacing * numVSpaces) / rows
-
-        // Choose the smaller size to ensure the grid fits
-        let tileSize = max(0, min(widthLimitedTile, heightLimitedTile))
-
-        // --- Spacing and Grid Finalization ---
-        let widthIsLimiter = widthLimitedTile <= heightLimitedTile + .ulpOfOne
-        let columnSpacing = interItemSpacing
-
-        // Calculate leftover vertical space and distribute it evenly among row gaps
-        let tilesTotalHeight = tileSize * rows
-        let leftoverHeight = max(0, availableHeight - tilesTotalHeight)
-        let extraPerGap = (widthIsLimiter && rows > 1) ? leftoverHeight / numVSpaces : 0
-
-        let rowSpacing = interItemSpacing + extraPerGap
-
-        let columns: [GridItem] = Array(
-            repeating: GridItem(.fixed(tileSize), spacing: columnSpacing),
-            count: Int(cols)
-        )
-
-        // return a structure with our layout calculations
-        return GridLayout(
-            columns: columns,
-            rowSpacing: rowSpacing,
-            tileSize: tileSize )
     }
 }
 
