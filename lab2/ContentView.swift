@@ -277,13 +277,6 @@ struct ContentView: View {
         let isPhone = UIDevice.current.userInterfaceIdiom == .phone
         let textFont: Font = isPhone ? .headline : .title
         let buttonIconFont: Font = isPhone ? .body : .title
-
-        // Progress computation
-        let totalCards = model.cards.count
-        let solvedCards = model.cards.filter { $0.solved }.count
-        let progress = totalCards > 0 ? Double(solvedCards) / Double(totalCards) : 0.0
-        let pairsSolved = solvedCards / 2
-        let totalPairs = max(1, totalCards / 2) // avoid divide-by-zero for label
         
         ZStack {
             VStack(spacing: 8) {
@@ -378,21 +371,22 @@ struct ContentView: View {
                         // Center the grid within the available space
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                        // Bottom progress view
+                        // Bottom progress view (percentage)
                         VStack(spacing: 6) {
                             HStack {
                                 Text("Progress")
                                     .font(isPhone ? .subheadline : .headline)
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Text("\(pairsSolved) / \(totalPairs)")
+                                let percent = Int((model.progress * 100).rounded())
+                                Text("\(percent)%")
                                     .font(isPhone ? .subheadline : .headline)
                                     .monospacedDigit()
                                     .foregroundColor(.secondary)
                             }
-                            ProgressView(value: progress)
+                            ProgressView(value: model.progress)
                                 .tint(.blue)
-                                .animation(.easeInOut(duration: 0.25), value: progress)
+                                .animation(.easeInOut(duration: 0.25), value: model.progress)
                         }
                         .padding(.top, 4)
                     }

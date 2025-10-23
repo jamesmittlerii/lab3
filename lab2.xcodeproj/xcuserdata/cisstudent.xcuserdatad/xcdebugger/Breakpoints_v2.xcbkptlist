@@ -16,7 +16,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "175"
             endingLineNumber = "175"
-            landmarkName = "updatePersonalBest(_:)"
+            landmarkName = "flip(cardAt:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

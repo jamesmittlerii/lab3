@@ -74,6 +74,29 @@ final class GameModel: ObservableObject {
     private weak var gameCenterManager: GameCenterManager?
     private var cancellables = Set<AnyCancellable>()
 
+    // MARK: - Progress metrics exposed to the UI
+
+    var totalCards: Int {
+        cards.count
+    }
+
+    var solvedCards: Int {
+        cards.filter { $0.solved }.count
+    }
+
+    var totalPairs: Int {
+        totalCards / 2
+    }
+
+    var pairsSolved: Int {
+        solvedCards / 2
+    }
+
+    var progress: Double {
+        guard totalCards > 0 else { return 0.0 }
+        return Double(solvedCards) / Double(totalCards)
+    }
+
     // need when we've got multiple classes depending on each other
     init(gameCenterManager: GameCenterManager?) {
         self.gameCenterManager = gameCenterManager
@@ -220,3 +243,4 @@ final class GameModel: ObservableObject {
         }
     }
 }
+
