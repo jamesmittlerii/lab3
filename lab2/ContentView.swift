@@ -175,7 +175,7 @@ struct ContentView: View {
     // use a variable to determine if we are iphone or ipad
     // unfortunately we need to tweak because the screen ratios and sizes are so different
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
+    
     // our object classes for MVVM
     @StateObject private var gameCenterManager: GameCenterManager
     @StateObject private var model: GameModel
@@ -218,8 +218,9 @@ struct ContentView: View {
         let isLandscape = geometry.size.width > geometry.size.height
         let isPhone = UIDevice.current.userInterfaceIdiom == .phone
         // Use optional chaining with a fallback for horizontalSizeClass
-        let isRegular = horizontalSizeClass == .regular
-        let spacing: CGFloat = isRegular ? 24 : 12
+       // let isRegular = horizontalSizeClass == .regular
+       
+        let spacing: CGFloat = isPhone ? 12 : 24
 
         // we use 4x6 for portrait
         // 8x3 on phone landscape and 6x4 on ipad landscape
@@ -272,6 +273,11 @@ struct ContentView: View {
     
     // this is our main view...finally!
     var body: some View {
+        // Device-based font sizing
+        let isPhone = UIDevice.current.userInterfaceIdiom == .phone
+        let textFont: Font = isPhone ? .headline : .title
+        let buttonIconFont: Font = isPhone ? .body : .title
+        
         ZStack {
             VStack(spacing: 8) {
                 
@@ -279,9 +285,7 @@ struct ContentView: View {
                 
                 HStack(spacing: 8) {
                     Text("Flips: \(model.flipCount)")
-                        .font(
-                            horizontalSizeClass == .regular ? .title : .headline
-                        )
+                        .font(textFont)
                         .foregroundColor(.blue)
                     Text(
                         {
@@ -292,7 +296,7 @@ struct ContentView: View {
                             }
                         }()
                     )
-                    .font(horizontalSizeClass == .regular ? .title : .headline)
+                    .font(textFont)
                     .foregroundColor(.green)
 
                     // new game icon
@@ -302,9 +306,7 @@ struct ContentView: View {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .foregroundColor(.blue)
                             .accessibilityLabel("New Game")
-                            .font(
-                                horizontalSizeClass == .regular ? .title : .body
-                            )
+                            .font(buttonIconFont)
                     }
                     .help("Start a new game")
 
@@ -330,14 +332,12 @@ struct ContentView: View {
                                 gameCenterManager.isAuthenticated ? .orange : .gray
                             )
                             .accessibilityLabel("Show Leaderboard")
-                            .font(
-                                horizontalSizeClass == .regular ? .title : .body
-                            )
+                            .font(buttonIconFont)
                     }
                     .disabled(!gameCenterManager.isAuthenticated)
                     .help("Show global leaderboard")
                 }
-                .padding()
+                .padding(.bottom, 4)
 
                 // do the grid via GeometryReader and function
                 
@@ -372,6 +372,9 @@ struct ContentView: View {
                 }
             }
             .padding()
+            //.edgesIgnoringSafeArea(.all)
+
+            
             
             // if we won, show some confetti
             // this floats on top
