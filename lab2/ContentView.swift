@@ -277,6 +277,13 @@ struct ContentView: View {
         let isPhone = UIDevice.current.userInterfaceIdiom == .phone
         let textFont: Font = isPhone ? .headline : .title
         let buttonIconFont: Font = isPhone ? .body : .title
+
+        // Progress computation
+        let totalCards = model.cards.count
+        let solvedCards = model.cards.filter { $0.solved }.count
+        let progress = totalCards > 0 ? Double(solvedCards) / Double(totalCards) : 0.0
+        let pairsSolved = solvedCards / 2
+        let totalPairs = max(1, totalCards / 2) // avoid divide-by-zero for label
         
         ZStack {
             VStack(spacing: 8) {
@@ -347,27 +354,48 @@ struct ContentView: View {
                         horizontalSizeClass: horizontalSizeClass
                     )
 
-                    // trusty LazyVGrid
-                    LazyVGrid(columns: params.columns, spacing: params.spacing) {
-                        
-                        // spin through our cards
-                        // send each TileCard our wiggle flags
-                        
-                        ForEach(model.cards.indices, id: \.self) { idx in
-                            TiledCard(
-                                card: model.cards[idx],
-                                isMatchWiggling: wigglingIndices.contains(idx),
-                                isWinWiggling: showConfetti
-                            ) {
-                                // secret sauce closure to handle flip card logic in the model
-                                model.flip(cardAt: idx)
+                    VStack(spacing: 8) {
+                        // trusty LazyVGrid
+                        LazyVGrid(columns: params.columns, spacing: params.spacing) {
+                            
+                            // spin through our cards
+                            // send each TileCard our wiggle flags
+                            
+                            ForEach(model.cards.indices, id: \.self) { idx in
+                                TiledCard(
+                                    card: model.cards[idx],
+                                    isMatchWiggling: wigglingIndices.contains(idx),
+                                    isWinWiggling: showConfetti
+                                ) {
+                                    // secret sauce closure to handle flip card logic in the model
+                                    model.flip(cardAt: idx)
+                                }
+                                // Set the frame to our calculated size.
+                                // The aspect ratio is already handled in the calculation.
+                                .frame(width: params.itemWidth, height: params.itemHeight)
                             }
-                            // Set the frame to our calculated size.
-                            // The aspect ratio is already handled in the calculation.
-                            .frame(width: params.itemWidth, height: params.itemHeight)
                         }
+                        // Center the grid within the available space
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                        // Bottom progress view
+                        VStack(spacing: 6) {
+                            HStack {
+                                Text("Progress")
+                                    .font(isPhone ? .subheadline : .headline)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                                Text("\(pairsSolved) / \(totalPairs)")
+                                    .font(isPhone ? .subheadline : .headline)
+                                    .monospacedDigit()
+                                    .foregroundColor(.secondary)
+                            }
+                            ProgressView(value: progress)
+                                .tint(.blue)
+                                .animation(.easeInOut(duration: 0.25), value: progress)
+                        }
+                        .padding(.top, 4)
                     }
-                    // Center the grid within the available space
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
