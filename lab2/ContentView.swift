@@ -389,24 +389,30 @@ struct ContentView: View {
         .animation(.default, value: showConfetti)
 
         // Bottom progress section pinned to the safe area
+        // fitting the grid seems to be tricky
+        // here we just pin to the bottom and that seems to do the trick
         .safeAreaInset(edge: .bottom) {
             let percent = Int((model.progress * 100).rounded())
-            VStack(spacing: 6) {
-                HStack {
-                    Text("Progress")
-                        .font(isPhone ? .subheadline : .headline)
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text("\(percent)%")
-                        .font(isPhone ? .subheadline : .headline)
-                        .monospacedDigit()
-                        .foregroundColor(.secondary)
+            HStack {
+                VStack(spacing: 6) {
+                    HStack {
+                        Text("Progress")
+                            .font(isPhone ? .subheadline : .headline)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("\(percent)%")
+                            .font(isPhone ? .subheadline : .headline)
+                            .monospacedDigit()
+                            .foregroundColor(.secondary)
+                    }
+                    ProgressView(value: model.progress)
+                        .tint(.blue)
+                        .animation(.easeInOut(duration: 0.25), value: model.progress)
                 }
-                ProgressView(value: model.progress)
-                    .tint(.blue)
-                    .animation(.easeInOut(duration: 0.25), value: model.progress)
+                
             }
-            .padding(.horizontal)
+            // I tried setting the horizontal padding dynamically to no avail. 100 seems to look good for the various orientations and devices
+            .padding(.horizontal,100)
             .padding(.top, 0)
             .padding(.bottom, 4)
             //.background(.ultraThinMaterial)
