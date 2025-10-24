@@ -368,36 +368,14 @@ struct ContentView: View {
                                 .frame(width: params.itemWidth, height: params.itemHeight)
                             }
                         }
-                        // Center the grid within the available space
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                        // Bottom progress view (percentage)
-                        VStack(spacing: 6) {
-                            HStack {
-                                Text("Progress")
-                                    .font(isPhone ? .subheadline : .headline)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                                let percent = Int((model.progress * 100).rounded())
-                                Text("\(percent)%")
-                                    .font(isPhone ? .subheadline : .headline)
-                                    .monospacedDigit()
-                                    .foregroundColor(.secondary)
-                            }
-                            ProgressView(value: model.progress)
-                                .tint(.blue)
-                                .animation(.easeInOut(duration: 0.25), value: model.progress)
-                        }
-                        .padding(.top, 4)
+                        // Keep grid full width; it will take remaining height
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .padding()
-            //.edgesIgnoringSafeArea(.all)
 
-            
-            
             // if we won, show some confetti
             // this floats on top
             if showConfetti {
@@ -409,6 +387,30 @@ struct ContentView: View {
         }
         // the confetti we throw up when we win
         .animation(.default, value: showConfetti)
+
+        // Bottom progress section pinned to the safe area
+        .safeAreaInset(edge: .bottom) {
+            let percent = Int((model.progress * 100).rounded())
+            VStack(spacing: 6) {
+                HStack {
+                    Text("Progress")
+                        .font(isPhone ? .subheadline : .headline)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(percent)%")
+                        .font(isPhone ? .subheadline : .headline)
+                        .monospacedDigit()
+                        .foregroundColor(.secondary)
+                }
+                ProgressView(value: model.progress)
+                    .tint(.blue)
+                    .animation(.easeInOut(duration: 0.25), value: model.progress)
+            }
+            .padding(.horizontal)
+            .padding(.top, 0)
+            .padding(.bottom, 4)
+            //.background(.ultraThinMaterial)
+        }
 
         // ok - we got notification back from the model that we won
         .onReceive(model.$isWin) { won in
