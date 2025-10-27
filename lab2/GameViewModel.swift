@@ -5,8 +5,6 @@
 //  Created by cisstudent on 10/27/25.
 //
 
-
-// Swift code here
 import Foundation
 import Combine
 import GameKit
@@ -29,6 +27,11 @@ final class GameViewModel: ObservableObject {
     @Published var showConfetti = false
     @Published var wigglingIndices = Set<Int>()
     @Published var isShowingLeaderboard = false
+
+    // Presentation overlay: indices temporarily shown face-up after mismatch
+    @Published private var transientFaceUp = Set<Int>()
+    // Disable tap interaction during mismatch presentation
+    @Published private(set) var isInteractionDisabled = false
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -78,15 +81,37 @@ final class GameViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        // Mismatch presentation: temporarily show mismatched cards face-up for the UI
+        model.mismatchedCardIndices
+            .sink { [weak self] indices in
+                guard let self else { return }
+                self.isInteractionDisabled = true
+                self.transientFaceUp.formUnion(indices)
+                playMismatchHaptic()
+                Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(0.9))
+                    guard let self else { return }
+                    self.transientFaceUp.subtract(indices)
+                    self.isInteractionDisabled = false
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Intents
 
     func newGame() {
         model.newGame()
+        // Clear any transient UI state
+        transientFaceUp.removeAll()
+        isInteractionDisabled = false
+        wigglingIndices.removeAll()
+        showConfetti = false
     }
 
     func flip(cardAt index: Int) {
+        guard !isInteractionDisabled else { return }
         model.flip(cardAt: index)
     }
 
@@ -96,4 +121,14 @@ final class GameViewModel: ObservableObject {
 
     // Expose leaderboard ID for the wrapper view
     var leaderboardID: String { gameCenterManager.leaderboardID }
+
+    // MARK: - Presentation helpers
+
+    func isPresentingFaceUp(_ index: Int) -> Bool {
+        // UI should show face-up if the model says so (solved or currently up),
+        // or if we’re temporarily presenting due to a mismatch.
+        guard cards.indices.contains(index) else { return false }
+        return cards[index].isFaceUp || transientFaceUp.contains(index)
+    }
 }
+

@@ -30,6 +30,7 @@ import SwiftUI
 /* this is our structure for the tiled card in the UI */
 struct TiledCard: View {
     let card: Card
+    let isFaceUp: Bool
     let isMatchWiggling: Bool
     let isWinWiggling: Bool
     let onTap: () -> Void
@@ -78,7 +79,7 @@ struct TiledCard: View {
             perspective: 0.4 // optional, adds depth realism
         )
         .onTapGesture(perform: onTap)
-        .onChange(of: card.isFaceUp) { _, newValue in
+        .onChange(of: isFaceUp) { _, newValue in
             withAnimation(.easeInOut(duration: flipDuration)) {
                 flipRotation = newValue ? 180 : 0
             }
@@ -90,7 +91,7 @@ struct TiledCard: View {
             if shouldWiggle { performWiggle(duration: 2.0) }
         }
         .onAppear {
-            flipRotation = card.isFaceUp ? 180 : 0
+            flipRotation = isFaceUp ? 180 : 0
         }
     }
 
@@ -341,6 +342,7 @@ struct ContentView: View {
                             ForEach(viewModel.cards.indices, id: \.self) { idx in
                                 TiledCard(
                                     card: viewModel.cards[idx],
+                                    isFaceUp: viewModel.isPresentingFaceUp(idx),
                                     isMatchWiggling: viewModel.wigglingIndices.contains(idx),
                                     isWinWiggling: viewModel.showConfetti
                                 ) {
@@ -350,6 +352,7 @@ struct ContentView: View {
                                 // Set the frame to our calculated size.
                                 // The aspect ratio is already handled in the calculation.
                                 .frame(width: params.itemWidth, height: params.itemHeight)
+                                .allowsHitTesting(!viewModel.isInteractionDisabled)
                             }
                         }
                         // Keep grid full width; it will take remaining height
@@ -421,3 +424,4 @@ final class GameCenterDelegate: NSObject, GKGameCenterControllerDelegate {
 #Preview {
     ContentView()
 }
+

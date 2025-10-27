@@ -64,8 +64,9 @@ final class GameModel: ObservableObject {
 
     // A subject to publish the indices of matched cards.
     // we do a little wiggle in the UI and play a haptic
-
     let matchedCardIndices = PassthroughSubject<[Int], Never>()
+    // A subject to publish the indices of mismatched cards (for UI-only delayed presentation).
+    let mismatchedCardIndices = PassthroughSubject<[Int], Never>()
 
     // keep track of which cards are flipped up
     private var indicesOfFaceUp: [Int] = []
@@ -166,26 +167,24 @@ final class GameModel: ObservableObject {
         if indicesOfFaceUp.count == 2 {
             let firstIdx = indicesOfFaceUp[0]
             let secondIdx = indicesOfFaceUp[1]
+            
+            self.indicesOfFaceUp = []
 
             // if we've matched, mark those cards as solved and check for win
             if cards[firstIdx].content == cards[secondIdx].content {
                 self.cards[firstIdx].solved = true
                 self.cards[secondIdx].solved = true
-                self.indicesOfFaceUp = []
                 self.checkForWin()
                 // send these out to the UI so we can do the wiggle
                 matchedCardIndices.send([firstIdx, secondIdx])
 
             } else {
-                // Mismatch: flip back after a short delay
-                // I don't understand the weak self stuff but seems to been required
-                Task { [weak self] in
-                    try? await Task.sleep(for: .seconds(0.9))
-                    guard let self else { return }
-                    self.cards[firstIdx].isFaceUp = false
-                    self.cards[secondIdx].isFaceUp = false
-                    self.indicesOfFaceUp = []
-                }
+                // Mismatch: immediately flip both back down in the model (truth),
+                // clear tracking, and notify UI so it can present a temporary delay.
+                self.cards[firstIdx].isFaceUp = false
+                self.cards[secondIdx].isFaceUp = false
+                
+                mismatchedCardIndices.send([firstIdx, secondIdx])
             }
         }
     }
