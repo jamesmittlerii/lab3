@@ -30,11 +30,6 @@ final class GameViewModel: ObservableObject {
     @Published var wigglingIndices = Set<Int>()
     @Published var isShowingLeaderboard = false
 
-    // Configurable timings
-    private let mismatchFlipBackDelay: Duration = .seconds(0.9)
-    private let matchWiggleDuration: Duration = .seconds(0.65)
-    private let confettiHideDelay: Duration = .seconds(2.5)
-
     private var cancellables = Set<AnyCancellable>()
 
     init(gameCenterManager: GameCenterManager) {
@@ -64,7 +59,7 @@ final class GameViewModel: ObservableObject {
                     self.showConfetti = true
                     playWinSound()
                     Task { [weak self] in
-                        try? await Task.sleep(for: self?.confettiHideDelay ?? .seconds(2.5))
+                        try? await Task.sleep(for: .seconds(2.5))
                         self?.showConfetti = false
                     }
                 }
@@ -78,20 +73,8 @@ final class GameViewModel: ObservableObject {
                 self.wigglingIndices.formUnion(indices)
                 playMatchHaptic()
                 Task { [weak self] in
-                    try? await Task.sleep(for: self?.matchWiggleDuration ?? .seconds(0.65))
+                    try? await Task.sleep(for: .seconds(0.65))
                     self?.wigglingIndices.subtract(indices)
-                }
-            }
-            .store(in: &cancellables)
-
-        // Handle mismatches: delay, haptic, then flip back via the model.
-        model.mismatchedCardIndices
-            .sink { [weak self] indices in
-                guard let self else { return }
-                playMismatchHaptic()
-                Task { [weak self] in
-                    try? await Task.sleep(for: self?.mismatchFlipBackDelay ?? .seconds(0.9))
-                    await self?.model.flipBackMismatched(indices: indices)
                 }
             }
             .store(in: &cancellables)
