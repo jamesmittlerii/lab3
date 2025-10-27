@@ -32,18 +32,22 @@ import SwiftUI
 import SwiftUI
 
 struct TiledCard: View {
-    let card: Card
+    // MARK: - Properties
+    let card: Card // Assuming Card has var isFaceUp: Bool
     let isMatchWiggling: Bool
     let isWinWiggling: Bool
     let onTap: () -> Void
 
     @State private var rotationAngle: Angle = .zero
+    // The rotation state tracks the current flip position (0 for back, 180 for front)
     @State private var flipRotation: Double = 0
-    @State private var isShowingFront: Bool = false
+    
+    // Derived property for the 3D rotation value
+    private var rotationDegrees: Double { card.isFaceUp ? 180 : 0 }
 
     var body: some View {
         ZStack {
-            // FRONT
+            // FRONT Face: Starts facing the user. Becomes visible when flipRotation reaches 90+.
             Group {
                 RoundedRectangle(cornerRadius: 10)
                     .foregroundColor(.white)
@@ -55,20 +59,32 @@ struct TiledCard: View {
                     .scaledToFit()
                     .padding()
             }
-            .opacity(isShowingFront ? 1 : 0)
+            // Opacity: Only visible when rotated halfway or more
+            .opacity(flipRotation >= 90 ? 1.0 : 0.0)
 
-            // BACK
+            // BACK Face: Rotated 180 degrees initially so it faces away from the user.
             RoundedRectangle(cornerRadius: 10)
                 .foregroundColor(.blue)
-                .opacity(isShowingFront ? 0 : 1)
+                .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+            // Opacity: Only visible when rotated less than halfway
+            .opacity(flipRotation < 90 ? 1.0 : 0.0)
         }
-        .frame(minWidth: 0, maxWidth: .infinity)
-        .frame(maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .rotationEffect(rotationAngle)
+        // The rotation is applied to the ZStack, flipping both faces simultaneously
         .rotation3DEffect(.degrees(flipRotation), axis: (x: 0, y: 1, z: 0))
+        .onTapGesture { onTap() }
+        
+        // MARK: - State & Animation Handlers
+
+        // Animate the card flip when isFaceUp changes
         .onChange(of: card.isFaceUp) { _, newValue in
-            animateFlip(toFront: newValue)
+            withAnimation(.easeInOut(duration: 0.4)) {
+                // Instantly update the rotation value, letting SwiftUI animate
+                flipRotation = newValue ? 180 : 0
+            }
         }
+        // Wiggle animations remain the same, but simplified Task syntax
         .onChange(of: isMatchWiggling) { _, shouldWiggle in
             guard shouldWiggle else { return }
             performWiggle(duration: 0.5)
@@ -77,60 +93,28 @@ struct TiledCard: View {
             guard shouldWiggle else { return }
             performWiggle(duration: 2.0)
         }
-        .onTapGesture {
-            onTap()
-        }
         .onAppear {
-            // Initialize rotation and face
-            isShowingFront = card.isFaceUp
+            // Set initial state without animation
             flipRotation = card.isFaceUp ? 180 : 0
         }
     }
 
-    private func animateFlip(toFront: Bool) {
-        let halfDuration = 0.2
-
-        if toFront {
-            // Flip forward (0 → 90 → 180)
-            withAnimation(.easeInOut(duration: halfDuration)) {
-                flipRotation += 90
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + halfDuration) {
-                isShowingFront = true
-                withAnimation(.easeInOut(duration: halfDuration)) {
-                    flipRotation = 180
-                }
-            }
-        } else {
-            // Flip backward (180 → 90 → 0)
-            withAnimation(.easeInOut(duration: halfDuration)) {
-                flipRotation -= 90
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + halfDuration) {
-                isShowingFront = false
-                withAnimation(.easeInOut(duration: halfDuration)) {
-                    flipRotation = 0
-                }
-            }
-        }
-    }
+    // MARK: - Wiggle Animation (Slightly Cleaned)
 
     private func performWiggle(duration: Double) {
-        Task {
-            let singleWiggleDuration = 0.125
-            let wiggles = Int(duration / singleWiggleDuration)
-            let animation = Animation.linear(duration: singleWiggleDuration)
-            let pause = UInt64(singleWiggleDuration * 1_000_000_000)
-            let wiggleAngle: Double = 4
+        let singleWiggleDuration = 0.125
+        let wiggles = Int(duration / singleWiggleDuration)
+        let animation = Animation.linear(duration: singleWiggleDuration)
+        let pause = UInt64(singleWiggleDuration * 1_000_000_000)
+        let wiggleAngle: Double = 4
 
+        Task {
             for i in 0..<wiggles {
                 let angle = (i % 2 == 0) ? wiggleAngle : -wiggleAngle
                 withAnimation(animation) { rotationAngle = .degrees(angle) }
-                try await Task.sleep(nanoseconds: pause)
+                // Sleep using the Task API is excellent here
+                try? await Task.sleep(nanoseconds: pause)
             }
-
             withAnimation(animation) { rotationAngle = .zero }
         }
     }
