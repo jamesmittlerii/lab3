@@ -29,89 +29,116 @@ import SwiftUI
 
 /* this is our structure for the tiled card in the UI */
 
+import SwiftUI
+
 struct TiledCard: View {
-
-    // our card data structure
     let card: Card
-
-    // whether the card should be wiggling from a match
     let isMatchWiggling: Bool
-
-    // whether the card should be wiggling because of a win
     let isWinWiggling: Bool
-
-    // the closure to call on tap
     let onTap: () -> Void
 
-    // we use this to wiggle the card
     @State private var rotationAngle: Angle = .zero
+    @State private var flipRotation: Double = 0
+    @State private var isShowingFront: Bool = false
 
     var body: some View {
         ZStack {
-            // we need this white rectangle so the tile is legible in dark mode
-            RoundedRectangle(cornerRadius: 10)
-                .foregroundColor(.white)
-            // a border
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(lineWidth: 3).foregroundColor(.blue)
-            // our card image
+            // FRONT
+            Group {
+                RoundedRectangle(cornerRadius: 10)
+                    .foregroundColor(.white)
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(lineWidth: 3)
+                    .foregroundColor(.blue)
+                Image(card.content)
+                    .resizable()
+                    .scaledToFit()
+                    .padding()
+            }
+            .opacity(isShowingFront ? 1 : 0)
 
-            Image(card.content)
-                .resizable()
-                .scaledToFit()
-                .padding()  // this keeps the image a little smaller than the tile
-
-            // a cover to hide the card
-            let cover = RoundedRectangle(cornerRadius: 10)
+            // BACK
+            RoundedRectangle(cornerRadius: 10)
                 .foregroundColor(.blue)
-
-            // we show a blue rectangle to cover the image if the card isn't face up
-            cover.opacity(card.isFaceUp ? 0 : 1)
+                .opacity(isShowingFront ? 0 : 1)
         }
         .frame(minWidth: 0, maxWidth: .infinity)
         .frame(maxHeight: .infinity)
-        // this is set by the wiggle effect
         .rotationEffect(rotationAngle)
-
-        // wiggle for a bit if we match
+        .rotation3DEffect(.degrees(flipRotation), axis: (x: 0, y: 1, z: 0))
+        .onChange(of: card.isFaceUp) { _, newValue in
+            animateFlip(toFront: newValue)
+        }
         .onChange(of: isMatchWiggling) { _, shouldWiggle in
             guard shouldWiggle else { return }
             performWiggle(duration: 0.5)
         }
-        // wiggle all the tiles on win
         .onChange(of: isWinWiggling) { _, shouldWiggle in
             guard shouldWiggle else { return }
             performWiggle(duration: 2.0)
         }
-        // do the card flipping
-        // this closure stuff is funky we pass in a reference to the game model to do the work
         .onTapGesture {
             onTap()
         }
+        .onAppear {
+            // Initialize rotation and face
+            isShowingFront = card.isFaceUp
+            flipRotation = card.isFaceUp ? 180 : 0
+        }
     }
 
-    // wiggle the tile on match or win
-    // the duration of the wiggle is a variable. short wiggle for match, longer for win
+    private func animateFlip(toFront: Bool) {
+        let halfDuration = 0.2
+
+        if toFront {
+            // Flip forward (0 → 90 → 180)
+            withAnimation(.easeInOut(duration: halfDuration)) {
+                flipRotation += 90
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + halfDuration) {
+                isShowingFront = true
+                withAnimation(.easeInOut(duration: halfDuration)) {
+                    flipRotation = 180
+                }
+            }
+        } else {
+            // Flip backward (180 → 90 → 0)
+            withAnimation(.easeInOut(duration: halfDuration)) {
+                flipRotation -= 90
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + halfDuration) {
+                isShowingFront = false
+                withAnimation(.easeInOut(duration: halfDuration)) {
+                    flipRotation = 0
+                }
+            }
+        }
+    }
+
     private func performWiggle(duration: Double) {
         Task {
-            let singleWiggleDuration = 0.125  //duration / Double(wiggles)
+            let singleWiggleDuration = 0.125
             let wiggles = Int(duration / singleWiggleDuration)
             let animation = Animation.linear(duration: singleWiggleDuration)
             let pause = UInt64(singleWiggleDuration * 1_000_000_000)
             let wiggleAngle: Double = 4
 
-            // rotate back and forth however many times
             for i in 0..<wiggles {
                 let angle = (i % 2 == 0) ? wiggleAngle : -wiggleAngle
                 withAnimation(animation) { rotationAngle = .degrees(angle) }
                 try await Task.sleep(nanoseconds: pause)
             }
 
-            // reset to zero
             withAnimation(animation) { rotationAngle = .zero }
         }
     }
 }
+
+
+
+
 
 // this is for showing some confetti when we win
 struct ConfettiParticle: Identifiable {
