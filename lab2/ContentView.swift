@@ -180,24 +180,16 @@ struct ContentView: View {
     // unfortunately we need to tweak because the screen ratios and sizes are so different
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
-    // our object classes for MVVM
-    @StateObject private var gameCenterManager: GameCenterManager
-    @StateObject private var model: GameModel
+    // ViewModel for MVVM
+    @StateObject private var viewModel: GameViewModel
 
-    // initialize our object classes
-    // some shenanigans because the model needs to access the game manager
     init() {
         let manager = GameCenterManager()
-        _gameCenterManager = StateObject(wrappedValue: manager)
-        _model = StateObject(
-            wrappedValue: GameModel(gameCenterManager: manager)
-        )
+        _viewModel = StateObject(wrappedValue: GameViewModel(gameCenterManager: manager))
     }
 
     // anything with @state will refresh the UI on change
-    @State private var showConfetti = false
     @State private var showingLeaderboard = false
-    @State private var wigglingIndices = Set<Int>()
     
     // the grid layout logic got nasty so moved to a function
     // this structure returns the calculations
@@ -288,12 +280,12 @@ struct ContentView: View {
                 // top bar is info and buttons
                 
                 HStack(spacing: 8) {
-                    Text("Flips: \(model.flipCount)")
+                    Text("Flips: \(viewModel.flipCount)")
                         .font(textFont)
                         .foregroundColor(.blue)
                     Text(
                         {
-                            if let best = model.personalBest {
+                            if let best = viewModel.personalBest {
                                 return "High Score: \(best)"
                             } else {
                                 return "High Score: --"
@@ -305,7 +297,7 @@ struct ContentView: View {
 
                     // new game icon
                     Button {
-                        model.newGame()
+                        viewModel.newGame()
                     } label: {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .foregroundColor(.blue)
@@ -316,29 +308,17 @@ struct ContentView: View {
 
                     // global leadboard icon
                     Button {
-                        Task {
-                            // Load leaderboard list (optional sanity check)
-                            do {
-                                _ = try await GKLeaderboard.loadLeaderboards(
-                                    IDs: [gameCenterManager.leaderboardID])
-                            } catch {
-                                print(
-                                    "Error loading leaderboard: \(error.localizedDescription)"
-                                )
-                            }
-                            // Present Game Center leaderboard view controller
-                            presentLeaderboard()
-                        }
+                        viewModel.showLeaderboard()
                     } label: {
                         Label("Leaderboard", systemImage: "trophy")
                             .labelStyle(.iconOnly)
                             .foregroundColor(
-                                gameCenterManager.isAuthenticated ? .orange : .gray
+                                viewModel.isAuthenticated ? .orange : .gray
                             )
                             .accessibilityLabel("Show Leaderboard")
                             .font(buttonIconFont)
                     }
-                    .disabled(!gameCenterManager.isAuthenticated)
+                    .disabled(!viewModel.isAuthenticated)
                     .help("Show global leaderboard")
                 }
                 .padding(.bottom, 4)
@@ -358,14 +338,14 @@ struct ContentView: View {
                             // spin through our cards
                             // send each TileCard our wiggle flags
                             
-                            ForEach(model.cards.indices, id: \.self) { idx in
+                            ForEach(viewModel.cards.indices, id: \.self) { idx in
                                 TiledCard(
-                                    card: model.cards[idx],
-                                    isMatchWiggling: wigglingIndices.contains(idx),
-                                    isWinWiggling: showConfetti
+                                    card: viewModel.cards[idx],
+                                    isMatchWiggling: viewModel.wigglingIndices.contains(idx),
+                                    isWinWiggling: viewModel.showConfetti
                                 ) {
                                     // secret sauce closure to handle flip card logic in the model
-                                    model.flip(cardAt: idx)
+                                    viewModel.flip(cardAt: idx)
                                 }
                                 // Set the frame to our calculated size.
                                 // The aspect ratio is already handled in the calculation.
@@ -382,7 +362,7 @@ struct ContentView: View {
 
             // if we won, show some confetti
             // this floats on top
-            if showConfetti {
+            if viewModel.showConfetti {
                 ConfettiView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .transition(.opacity)
@@ -390,13 +370,13 @@ struct ContentView: View {
             }
         }
         // the confetti we throw up when we win
-        .animation(.default, value: showConfetti)
+        .animation(.default, value: viewModel.showConfetti)
 
         // Bottom progress section pinned to the safe area
         // fitting the grid seems to be tricky
         // here we just pin to the bottom and that seems to do the trick
         .safeAreaInset(edge: .bottom) {
-            let percent = Int((model.progress * 100).rounded())
+            let percent = Int((viewModel.progress * 100).rounded())
             HStack {
                 VStack(spacing: 6) {
                     HStack {
@@ -409,9 +389,9 @@ struct ContentView: View {
                             .monospacedDigit()
                             .foregroundColor(.secondary)
                     }
-                    ProgressView(value: model.progress)
+                    ProgressView(value: viewModel.progress)
                         .tint(.blue)
-                        .animation(.easeInOut(duration: 0.25), value: model.progress)
+                        .animation(.easeInOut(duration: 0.25), value: viewModel.progress)
                 }
                 
             }
@@ -421,49 +401,10 @@ struct ContentView: View {
             .padding(.bottom, 4)
             //.background(.ultraThinMaterial)
         }
-
-        // ok - we got notification back from the model that we won
-        .onReceive(model.$isWin) { won in
-            guard won else { return }
-            // Model handles reporting and refreshing personalBest.
-            // Just show celebration UI here.
-            showConfetti = true
-            playWinSound()
-            // turn the confetti off after a bit
-            Task {
-                try await Task.sleep(for: .seconds(2.5))
-                showConfetti = false
-            }
+        .sheet(isPresented: $viewModel.isShowingLeaderboard) {
+            GameCenterView(leaderboardID: viewModel.leaderboardID)
+                .ignoresSafeArea()
         }
-        // we got a notification that we matched two cards
-        .onReceive(model.matchedCardIndices) { indices in
-            
-            // wiggling indices gets passed to isMatchWiggling via @State trickery
-            wigglingIndices.formUnion(indices)
-            playMatchHaptic()
-            // After the animation duration, remove the indices so they stop wiggling.
-            Task {
-                // The animation takes about 0.625 seconds. Wait a bit longer.
-                try await Task.sleep(for: .seconds(0.65))
-                wigglingIndices.subtract(indices)
-            }
-        }
-        
-    }
-
-    // Present GKGameCenterViewController for the leaderboard
-    // these function and class seem to be the preferred mechanism on newest IOS
-    @MainActor
-    private func presentLeaderboard() {
-        guard let rootVC = currentRootViewController() else {
-            print("No root view controller to present Game Center.")
-            return
-        }
-        let gcVC = GKGameCenterViewController(
-            leaderboardID: gameCenterManager.leaderboardID, playerScope: .global,
-            timeScope: .allTime)
-        gcVC.gameCenterDelegate = GameCenterDelegate.shared
-        rootVC.present(gcVC, animated: true)
     }
 }
 
