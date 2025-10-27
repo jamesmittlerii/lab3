@@ -74,7 +74,7 @@ final class GameViewModel: ObservableObject {
             .sink { [weak self] indices in
                 guard let self else { return }
                 self.wigglingIndices.formUnion(indices)
-                playMatchHaptic()
+                //playMatchHaptic()
                 Task { [weak self] in
                     try? await Task.sleep(for: .seconds(0.65))
                     self?.wigglingIndices.subtract(indices)
@@ -83,9 +83,12 @@ final class GameViewModel: ObservableObject {
             .store(in: &cancellables)
 
         // Mismatch presentation: temporarily show mismatched cards face-up for the UI
+        // this is a little janky but we keep the source of truth in the model that the cards didn't match so we turned them over
+        // we want the UI to keep them turned up for a little bit longer then flip them over
         model.mismatchedCardIndices
             .sink { [weak self] indices in
                 guard let self else { return }
+                // lock the UI until we get the cards turned back over
                 self.isInteractionDisabled = true
                 self.transientFaceUp.formUnion(indices)
                 playMismatchHaptic()
@@ -98,8 +101,6 @@ final class GameViewModel: ObservableObject {
             }
             .store(in: &cancellables)
     }
-
-    // MARK: - Intents
 
     func newGame() {
         model.newGame()
@@ -122,8 +123,7 @@ final class GameViewModel: ObservableObject {
     // Expose leaderboard ID for the wrapper view
     var leaderboardID: String { gameCenterManager.leaderboardID }
 
-    // MARK: - Presentation helpers
-
+   
     func isPresentingFaceUp(_ index: Int) -> Bool {
         // UI should show face-up if the model says so (solved or currently up),
         // or if we’re temporarily presenting due to a mismatch.
