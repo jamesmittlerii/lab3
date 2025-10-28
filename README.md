@@ -16,7 +16,9 @@ GameViewModel operates as the intermediary between the Model and View. In this p
 
 Most of GameViewModel is straight pass through between the Model and View but there are a few mechanisms that seem to fit the View Model well. First are timers to control how long the cards wiggle when matched or the game is won. Second is a timer and logic  to control how long the cards stay face up after the second card is flipped and there is no match.
 
+Further discussion about [Functionality](./Functionality.md).
 
+Some details about the automated [Build pipeline](./Functionality.md).
 
 https://github.com/user-attachments/assets/05bdcccc-7405-4504-9cb7-db8284ac102c
 
