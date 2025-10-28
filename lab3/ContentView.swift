@@ -193,6 +193,9 @@ struct ContentView: View {
     // anything with @state will refresh the UI on change
     @State private var showingLeaderboard = false
     
+    // Dealing animation state
+    @State private var dealtIndices: Set<Int> = []
+
     // the grid layout logic got nasty so moved to a function
     // this structure returns the calculations
     struct GridParameters {
@@ -269,6 +272,20 @@ struct ContentView: View {
         )
     }
 
+    // Deal animation helper
+    @MainActor
+    private func dealCards() async {
+        dealtIndices.removeAll()
+        // Tune these to taste
+        let delayStep: Double = 0.05
+        let spring = Animation.spring(response: 0.35, dampingFraction: 0.85, blendDuration: 0.15)
+        for idx in viewModel.cards.indices {
+            try? await Task.sleep(for: .seconds(delayStep))
+            withAnimation(spring) {
+                _ = dealtIndices.insert(idx)
+            }
+        }
+    }
     
     // this is our main view...finally!
     var body: some View {
@@ -301,6 +318,7 @@ struct ContentView: View {
                     // new game icon
                     Button {
                         viewModel.newGame()
+                        Task { await dealCards() }
                     } label: {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .foregroundColor(.blue)
@@ -334,6 +352,14 @@ struct ContentView: View {
                         horizontalSizeClass: horizontalSizeClass
                     )
 
+                    // Precompute a deck origin (top-center above the grid)
+                    let gridWidth = params.itemWidth * CGFloat(params.columnCount)
+                        + params.spacing * CGFloat(params.columnCount - 1)
+                    let deckOrigin = CGPoint(
+                        x: gridWidth / 2.0,
+                        y: -params.itemHeight - 24 // slightly above first row
+                    )
+
                     VStack(spacing: 8) {
                         // trusty LazyVGrid
                         LazyVGrid(columns: params.columns, spacing: params.spacing) {
@@ -342,6 +368,8 @@ struct ContentView: View {
                             // send each TileCard our wiggle flags
                             
                             ForEach(viewModel.cards.indices, id: \.self) { idx in
+                                let isDealt = dealtIndices.contains(idx)
+                                
                                 TiledCard(
                                     card: viewModel.cards[idx],
                                     isFaceUp: viewModel.isPresentingFaceUp(idx),
@@ -351,14 +379,28 @@ struct ContentView: View {
                                     // secret sauce closure to handle flip card logic in the model
                                     viewModel.flip(cardAt: idx)
                                 }
-                                // Set the frame to our calculated size.
-                                // The aspect ratio is already handled in the calculation.
-                                .frame(width: params.itemWidth, height: params.itemHeight)
-                                .allowsHitTesting(!viewModel.isInteractionDisabled)
+                                // Compute the target center of this card within the grid
+                                .modifier(DealInModifier(
+                                    index: idx,
+                                    columnCount: params.columnCount,
+                                    itemSize: CGSize(width: params.itemWidth, height: params.itemHeight),
+                                    spacing: params.spacing,
+                                    deckOrigin: deckOrigin,
+                                    isDealt: isDealt
+                                ))
+                                .allowsHitTesting(!viewModel.isInteractionDisabled && isDealt)
                             }
                         }
                         // Keep grid full width; it will take remaining height
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .onAppear {
+                            // trigger the initial deal when the grid appears
+                            Task { await dealCards() }
+                        }
+                        // Re-deal when the model regenerates the cards
+                        .onChange(of: viewModel.cards) { _, _ in
+                            Task { await dealCards() }
+                        }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -410,6 +452,44 @@ struct ContentView: View {
             GameCenterView(leaderboardID: viewModel.leaderboardID)
                 .ignoresSafeArea()
         }
+    }
+}
+
+// Helper view modifier to make each card fly in from a shared "deck" origin
+private struct DealInModifier: ViewModifier {
+    let index: Int
+    let columnCount: Int
+    let itemSize: CGSize
+    let spacing: CGFloat
+    let deckOrigin: CGPoint
+    let isDealt: Bool
+
+    func body(content: Content) -> some View {
+        // Determine row/column
+        let col = index % columnCount
+        let row = index / columnCount
+
+        // Compute the target center within the grid's coordinate space
+        let targetCenter = CGPoint(
+            x: CGFloat(col) * (itemSize.width + spacing) + itemSize.width / 2.0,
+            y: CGFloat(row) * (itemSize.height + spacing) + itemSize.height / 2.0
+        )
+
+        // Offset needed to place this card at the deck origin
+        let dx = deckOrigin.x - targetCenter.x
+        let dy = deckOrigin.y - targetCenter.y
+
+        // Animation parameters
+        let dealScale: CGFloat = 0.6
+        let dealRotation: Angle = .degrees(-10)
+
+        return content
+            .frame(width: itemSize.width, height: itemSize.height)
+            .opacity(isDealt ? 1 : 0)
+            .scaleEffect(isDealt ? 1 : dealScale)
+            .rotationEffect(isDealt ? .degrees(0) : dealRotation)
+            .offset(x: isDealt ? 0 : dx, y: isDealt ? 0 : dy)
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isDealt)
     }
 }
 
