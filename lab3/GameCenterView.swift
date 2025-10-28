@@ -26,7 +26,7 @@
  */
 
 
-/mport SwiftUI
+import SwiftUI
 import GameKit
 
 /* standard boiler plate from apple for showing a leaderboard via API */
