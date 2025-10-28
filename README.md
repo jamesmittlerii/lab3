@@ -3,6 +3,8 @@
 
 The Concentration style flip card game has been reorganized to support the MVVM (Model-View-ViewModel) architecture. 
 
+https://github.com/user-attachments/assets/586a1329-3ccd-4bfe-b4d9-1f55ef49159a
+
 **Model**
 
 [GameModel](./lab3/GameModel.swift) (Model) contains the game logic. It keeps track of which cards are turned up - whether cards have been matched, the running counter of how many flips and if all 12 pairs are matched (a win!). GameModel incorporates an array of Cards - each card contains the appropriate image and flip state (up or down).
