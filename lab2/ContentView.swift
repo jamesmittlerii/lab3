@@ -58,6 +58,8 @@ struct TiledCard: View {
                     .scaledToFit()
                     .padding()
             }
+            // Counter-rotate the front so it isn't mirrored when the container flips
+            .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
             // only show the image if the angle supports it
             .opacity(flipRotation >= 90 ? 1 : 0)
 
@@ -424,4 +426,3 @@ final class GameCenterDelegate: NSObject, GKGameCenterControllerDelegate {
 #Preview {
     ContentView()
 }
-

@@ -93,7 +93,7 @@ final class GameViewModel: ObservableObject {
                 self.transientFaceUp.formUnion(indices)
                 playMismatchHaptic()
                 Task { [weak self] in
-                    try? await Task.sleep(for: .seconds(0.9))
+                    try? await Task.sleep(for: .seconds(1.5))
                     guard let self else { return }
                     self.transientFaceUp.subtract(indices)
                     self.isInteractionDisabled = false
