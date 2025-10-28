@@ -16,9 +16,15 @@ ContentView handles the animation for flipping cards, wiggling cards and showing
 
 Most of GameViewModel is straight pass through between the Model and View but there are a few mechanisms that seem to fit the View Model well. First are timers to control how long the cards wiggle when matched or the game is won. Second is a timer and logic  to control how long the cards stay face up after the second card is flipped and there is no match.
 
-Further discussion about [Functionality](./Functionality.md).
+Further discussion about [Functionality](./Functionality.md). See below for video explaining the MVVM .
 
 Some details about the automated [Build pipeline](./Build.md).
 
+Quick demo of game play.
+
 https://github.com/user-attachments/assets/05bdcccc-7405-4504-9cb7-db8284ac102c
+
+
+
+https://github.com/user-attachments/assets/f236d1ee-c59d-48f3-be4f-2cb0a445cf4a
 
