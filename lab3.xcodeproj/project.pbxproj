@@ -12,37 +12,37 @@
 			containerPortal = D4F509C92E9533F400656DDB /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = D4F509D02E9533F400656DDB;
-			remoteInfo = lab2;
+			remoteInfo = lab3;
 		};
 		D4F509E92E9533FA00656DDB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = D4F509C92E9533F400656DDB /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = D4F509D02E9533F400656DDB;
-			remoteInfo = lab2;
+			remoteInfo = lab3;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		D4F509D12E9533F400656DDB /* lab2.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = lab2.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D4F509DE2E9533FA00656DDB /* lab2Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = lab2Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		D4F509E82E9533FA00656DDB /* lab2UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = lab2UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D4F509D12E9533F400656DDB /* lab3.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = lab3.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D4F509DE2E9533FA00656DDB /* lab3Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = lab3Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D4F509E82E9533FA00656DDB /* lab3UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = lab3UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		D4F509D32E9533F400656DDB /* lab2 */ = {
+		D4F509D32E9533F400656DDB /* lab3 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = lab2;
+			path = lab3;
 			sourceTree = "<group>";
 		};
-		D4F509E12E9533FA00656DDB /* lab2Tests */ = {
+		D4F509E12E9533FA00656DDB /* lab3Tests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = lab2Tests;
+			path = lab3Tests;
 			sourceTree = "<group>";
 		};
-		D4F509EB2E9533FA00656DDB /* lab2UITests */ = {
+		D4F509EB2E9533FA00656DDB /* lab3UITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = lab2UITests;
+			path = lab3UITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -72,12 +72,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		D44A530F2EA86FC400872B63 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		D4F509C82E9533F400656DDB = {
 			isa = PBXGroup;
 			children = (
-				D4F509D32E9533F400656DDB /* lab2 */,
-				D4F509E12E9533FA00656DDB /* lab2Tests */,
-				D4F509EB2E9533FA00656DDB /* lab2UITests */,
+				D4F509D32E9533F400656DDB /* lab3 */,
+				D4F509E12E9533FA00656DDB /* lab3Tests */,
+				D4F509EB2E9533FA00656DDB /* lab3UITests */,
+				D44A530F2EA86FC400872B63 /* Frameworks */,
 				D4F509D22E9533F400656DDB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -85,9 +93,9 @@
 		D4F509D22E9533F400656DDB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D4F509D12E9533F400656DDB /* lab2.app */,
-				D4F509DE2E9533FA00656DDB /* lab2Tests.xctest */,
-				D4F509E82E9533FA00656DDB /* lab2UITests.xctest */,
+				D4F509D12E9533F400656DDB /* lab3.app */,
+				D4F509DE2E9533FA00656DDB /* lab3Tests.xctest */,
+				D4F509E82E9533FA00656DDB /* lab3UITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,9 +103,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		D4F509D02E9533F400656DDB /* lab2 */ = {
+		D4F509D02E9533F400656DDB /* lab3 */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D4F509F22E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab2" */;
+			buildConfigurationList = D4F509F22E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab3" */;
 			buildPhases = (
 				D4F509CD2E9533F400656DDB /* Sources */,
 				D4F509CE2E9533F400656DDB /* Frameworks */,
@@ -108,18 +116,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				D4F509D32E9533F400656DDB /* lab2 */,
+				D4F509D32E9533F400656DDB /* lab3 */,
 			);
-			name = lab2;
+			name = lab3;
 			packageProductDependencies = (
 			);
-			productName = lab2;
-			productReference = D4F509D12E9533F400656DDB /* lab2.app */;
+			productName = lab3;
+			productReference = D4F509D12E9533F400656DDB /* lab3.app */;
 			productType = "com.apple.product-type.application";
 		};
-		D4F509DD2E9533FA00656DDB /* lab2Tests */ = {
+		D4F509DD2E9533FA00656DDB /* lab3Tests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D4F509F52E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab2Tests" */;
+			buildConfigurationList = D4F509F52E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab3Tests" */;
 			buildPhases = (
 				D4F509DA2E9533FA00656DDB /* Sources */,
 				D4F509DB2E9533FA00656DDB /* Frameworks */,
@@ -131,18 +139,18 @@
 				D4F509E02E9533FA00656DDB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				D4F509E12E9533FA00656DDB /* lab2Tests */,
+				D4F509E12E9533FA00656DDB /* lab3Tests */,
 			);
-			name = lab2Tests;
+			name = lab3Tests;
 			packageProductDependencies = (
 			);
-			productName = lab2Tests;
-			productReference = D4F509DE2E9533FA00656DDB /* lab2Tests.xctest */;
+			productName = lab3Tests;
+			productReference = D4F509DE2E9533FA00656DDB /* lab3Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		D4F509E72E9533FA00656DDB /* lab2UITests */ = {
+		D4F509E72E9533FA00656DDB /* lab3UITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = D4F509F82E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab2UITests" */;
+			buildConfigurationList = D4F509F82E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab3UITests" */;
 			buildPhases = (
 				D4F509E42E9533FA00656DDB /* Sources */,
 				D4F509E52E9533FA00656DDB /* Frameworks */,
@@ -154,13 +162,13 @@
 				D4F509EA2E9533FA00656DDB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				D4F509EB2E9533FA00656DDB /* lab2UITests */,
+				D4F509EB2E9533FA00656DDB /* lab3UITests */,
 			);
-			name = lab2UITests;
+			name = lab3UITests;
 			packageProductDependencies = (
 			);
-			productName = lab2UITests;
-			productReference = D4F509E82E9533FA00656DDB /* lab2UITests.xctest */;
+			productName = lab3UITests;
+			productReference = D4F509E82E9533FA00656DDB /* lab3UITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -186,7 +194,7 @@
 					};
 				};
 			};
-			buildConfigurationList = D4F509CC2E9533F400656DDB /* Build configuration list for PBXProject "lab2" */;
+			buildConfigurationList = D4F509CC2E9533F400656DDB /* Build configuration list for PBXProject "lab3" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -200,9 +208,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				D4F509D02E9533F400656DDB /* lab2 */,
-				D4F509DD2E9533FA00656DDB /* lab2Tests */,
-				D4F509E72E9533FA00656DDB /* lab2UITests */,
+				D4F509D02E9533F400656DDB /* lab3 */,
+				D4F509DD2E9533FA00656DDB /* lab3Tests */,
+				D4F509E72E9533FA00656DDB /* lab3UITests */,
 			);
 		};
 /* End PBXProject section */
@@ -258,12 +266,12 @@
 /* Begin PBXTargetDependency section */
 		D4F509E02E9533FA00656DDB /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D4F509D02E9533F400656DDB /* lab2 */;
+			target = D4F509D02E9533F400656DDB /* lab3 */;
 			targetProxy = D4F509DF2E9533FA00656DDB /* PBXContainerItemProxy */;
 		};
 		D4F509EA2E9533FA00656DDB /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D4F509D02E9533F400656DDB /* lab2 */;
+			target = D4F509D02E9533F400656DDB /* lab3 */;
 			targetProxy = D4F509E92E9533FA00656DDB /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -395,11 +403,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = lab2/lab2.entitlements;
+				CODE_SIGN_ENTITLEMENTS = lab3/lab3.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 32;
-				DEVELOPMENT_TEAM = QQGMGK7T7A;
+				CURRENT_PROJECT_VERSION = 58;
+				DEVELOPMENT_TEAM = L97LVVC8Y4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Mahjong Concentration Game";
@@ -415,8 +423,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.norvdave.lab2;
+				MARKETING_VERSION = 1.4.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rheosoft.lab3;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -434,11 +442,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = lab2/lab2.entitlements;
+				CODE_SIGN_ENTITLEMENTS = lab3/lab3.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 32;
-				DEVELOPMENT_TEAM = QQGMGK7T7A;
+				CURRENT_PROJECT_VERSION = 58;
+				DEVELOPMENT_TEAM = L97LVVC8Y4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Mahjong Concentration Game";
@@ -454,8 +462,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.norvdave.lab2;
+				MARKETING_VERSION = 1.4.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rheosoft.lab3;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -473,12 +481,12 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 32;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = L97LVVC8Y4;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rheosoft.lab2Tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rheosoft.lab3Tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -486,7 +494,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/lab2.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/lab2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/lab3.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/lab3";
 			};
 			name = Debug;
 		};
@@ -495,12 +503,12 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 32;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = L97LVVC8Y4;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rheosoft.lab2Tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rheosoft.lab3Tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -508,7 +516,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/lab2.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/lab2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/lab3.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/lab3";
 			};
 			name = Release;
 		};
@@ -516,11 +524,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 32;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = L97LVVC8Y4;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rheosoft.lab2UITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rheosoft.lab3UITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -528,7 +536,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = lab2;
+				TEST_TARGET_NAME = lab3;
 			};
 			name = Debug;
 		};
@@ -536,11 +544,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 32;
+				CURRENT_PROJECT_VERSION = 58;
 				DEVELOPMENT_TEAM = L97LVVC8Y4;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.rheosoft.lab2UITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rheosoft.lab3UITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -548,14 +556,14 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = lab2;
+				TEST_TARGET_NAME = lab3;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		D4F509CC2E9533F400656DDB /* Build configuration list for PBXProject "lab2" */ = {
+		D4F509CC2E9533F400656DDB /* Build configuration list for PBXProject "lab3" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D4F509F02E9533FA00656DDB /* Debug */,
@@ -564,7 +572,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D4F509F22E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab2" */ = {
+		D4F509F22E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab3" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D4F509F32E9533FA00656DDB /* Debug */,
@@ -573,7 +581,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D4F509F52E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab2Tests" */ = {
+		D4F509F52E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab3Tests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D4F509F62E9533FA00656DDB /* Debug */,
@@ -582,7 +590,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		D4F509F82E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab2UITests" */ = {
+		D4F509F82E9533FA00656DDB /* Build configuration list for PBXNativeTarget "lab3UITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D4F509F92E9533FA00656DDB /* Debug */,
