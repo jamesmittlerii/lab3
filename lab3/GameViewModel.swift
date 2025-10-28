@@ -1,9 +1,29 @@
-//
-//  GameViewModel.swift
-//  lab2
-//
-//  Created by cisstudent on 10/27/25.
-//
+/**
+ 
+ * __Partner Lab 3__
+ * Jim Mittler
+ * 20 October 2025
+ 
+ 
+ We've updated our Game to use MVVM architecture
+ 
+ all the game logic is moved to the GameModel class
+ 
+ ContentView contains the UI logic and the code to support showing the global leaderboard
+ 
+ GameViewModel is the View Model code that coordinates between the view and model.
+ 
+ The game connects to Game Center to keep track of personal best and show a global leaderboard of all the players
+ 
+ We show a 4x6 grid of randomly shuffled tile pairs.
+ If you match two tiles they remain face up until you complete the game.
+ We show some confetti when you win.
+ 
+ _Italic text__
+ __Bold text__
+ ~~Strikethrough text~~
+ 
+ */
 
 import Foundation
 import Combine
@@ -102,6 +122,7 @@ final class GameViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
+    // do the needful when we start a new game
     func newGame() {
         model.newGame()
         // Clear any transient UI state
@@ -110,6 +131,8 @@ final class GameViewModel: ObservableObject {
         wigglingIndices.removeAll()
         showConfetti = false
     }
+    
+    /* turn over a card */
 
     func flip(cardAt index: Int) {
         guard !isInteractionDisabled else { return }
@@ -123,6 +146,11 @@ final class GameViewModel: ObservableObject {
     // Expose leaderboard ID for the wrapper view
     var leaderboardID: String { gameCenterManager.leaderboardID }
 
+    /* this function is moderately interesting. If we flip up two unmatched cards, we turn the back down in the game model right away
+     but we want to leave them up in the UI for a short time so the player can memorize them.
+     
+     We keep an extra "transient faceup" data structure containing those two cards and the UI does a union between the card status and our little data structure
+     */
    
     func isPresentingFaceUp(_ index: Int) -> Bool {
         // UI should show face-up if the model says so (solved or currently up),
