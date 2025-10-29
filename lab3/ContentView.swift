@@ -34,6 +34,8 @@ struct TiledCard: View {
     let isMatchWiggling: Bool
     let isWinWiggling: Bool
     let onTap: () -> Void
+    
+    let isPhone = UIDevice.current.userInterfaceIdiom == .phone
 
     // rotation angle is for wiggle
     @State private var rotationAngle: Angle = .zero
@@ -56,7 +58,7 @@ struct TiledCard: View {
                 Image(card.content)
                     .resizable()
                     .scaledToFit()
-                    .padding()
+                    .padding(isPhone ? 8 : 12)
             }
             // start with the image flipped so when we rotate, it comes out looking right
             .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
@@ -64,12 +66,19 @@ struct TiledCard: View {
             // without this, the card started showing right away
             .opacity(flipRotation >= 90 ? 1 : 0)
 
-            // BACK face
-            // only show the back of the card if the angle supports it
-            RoundedRectangle(cornerRadius: 10)
-                .foregroundColor(.blue)
-             //   .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
-                .opacity(flipRotation < 90 ? 1 : 0)
+            // BACK face - mahjong image with green background
+            Group {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(red: 61.0/255.0, green: 100.0/255.0, blue: 80.0/255.0))
+                Image("mahjong")
+                    .resizable()
+                    .scaledToFit()
+                    .padding(isPhone ? 6 : 12)
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(lineWidth: 3)
+                    .foregroundColor(.blue)
+            }
+            .opacity(flipRotation < 90 ? 1 : 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // for wiggle
@@ -398,10 +407,7 @@ struct ContentView: View {
                             // trigger the initial deal when the grid appears
                             Task { await dealCards() }
                         }
-                        // Re-deal when the model regenerates the cards
-                        .onChange(of: viewModel.cards) { _, _ in
-                            Task { await dealCards() }
-                        }
+                        
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
