@@ -277,9 +277,10 @@ struct ContentView: View {
     private func dealCards() async {
         dealtIndices.removeAll()
         // Tune these to taste
-        let delayStep: Double = 0.05
+        let delayStep: Double = 0.07
         let spring = Animation.spring(response: 0.35, dampingFraction: 0.85, blendDuration: 0.15)
-        for idx in viewModel.cards.indices {
+        // Deal in reverse order
+        for idx in viewModel.cards.indices.reversed() {
             try? await Task.sleep(for: .seconds(delayStep))
             withAnimation(spring) {
                 _ = dealtIndices.insert(idx)
@@ -479,17 +480,18 @@ private struct DealInModifier: ViewModifier {
         let dx = deckOrigin.x - targetCenter.x
         let dy = deckOrigin.y - targetCenter.y
 
-        // Animation parameters
-        let dealScale: CGFloat = 0.6
-        let dealRotation: Angle = .degrees(-10)
+        // Spin parameters
+        let turns: Double = 1.5 // number of full spins while flying in
+        let direction: Double = 1 // index.isMultiple(of: 2) ? 1 : -1 // alternate direction for variety
+        let spinDegrees = direction * 360.0 * turns
 
         return content
             .frame(width: itemSize.width, height: itemSize.height)
             .opacity(isDealt ? 1 : 0)
-            .scaleEffect(isDealt ? 1 : dealScale)
-            .rotationEffect(isDealt ? .degrees(0) : dealRotation)
+            .scaleEffect(isDealt ? 1 : 0.6)
+            .rotationEffect(.degrees(isDealt ? 0 : spinDegrees))
             .offset(x: isDealt ? 0 : dx, y: isDealt ? 0 : dy)
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isDealt)
+            .animation(.spring(response: 0.6, dampingFraction: 0.85), value: isDealt)
     }
 }
 
