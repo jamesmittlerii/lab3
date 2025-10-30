@@ -66,24 +66,15 @@ struct TiledCard: View {
             // without this, the card started showing right away
             .opacity(flipRotation >= 90 ? 1 : 0)
 
-            // BACK face - mahjong image with green background and feathered edges
+            // BACK face - mahjong image with green background
             Group {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(red: 54.0/255.0, green: 96.0/255.0, blue: 79.0/255.0))
-
+                    .fill(Color(red: 60.0/255.0, green: 98.0/255.0, blue: 78.0/255.0))
                 Image("mahjong")
                     .resizable()
                     .scaledToFit()
+                
                     .padding(isPhone ? 6 : 12)
-                    // Feather the edges so the image blends with the green background
-                    .compositingGroup()
-                    .mask(
-                        RoundedRectangle(cornerRadius: 12)
-                            .inset(by: 12)   // keep a bit of margin from the stroke
-                            .fill(.white)
-                            .blur(radius: 12)     // larger blur = softer edge
-                    )
-
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(lineWidth: 3)
                     .foregroundColor(.blue)
@@ -200,6 +191,7 @@ struct ContentView: View {
     // use a variable to determine if we are iphone or ipad
     // unfortunately we need to tweak because the screen ratios and sizes are so different
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     
     // ViewModel for MVVM
     @StateObject private var viewModel: GameViewModel
@@ -437,33 +429,35 @@ struct ContentView: View {
         .animation(.default, value: viewModel.showConfetti)
 
         // Bottom progress section pinned to the safe area
-        // fitting the grid seems to be tricky
-        // here we just pin to the bottom and that seems to do the trick
+        // Hide on iPhone in landscape (compact vertical size class)
         .safeAreaInset(edge: .bottom) {
-            let percent = Int((viewModel.progress * 100).rounded())
-            HStack {
-                VStack(spacing: 6) {
-                    HStack {
-                        Text("Progress")
-                            .font(isPhone ? .subheadline : .headline)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text("\(percent)%")
-                            .font(isPhone ? .subheadline : .headline)
-                            .monospacedDigit()
-                            .foregroundColor(.secondary)
+            let isPhone = UIDevice.current.userInterfaceIdiom == .phone
+            if isPhone, verticalSizeClass == .compact {
+                // No progress bar in iPhone landscape
+                EmptyView()
+            } else {
+                let percent = Int((viewModel.progress * 100).rounded())
+                HStack {
+                    VStack(spacing: 6) {
+                        HStack {
+                            Text("Progress")
+                                .font(isPhone ? .subheadline : .headline)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text("\(percent)%")
+                                .font(isPhone ? .subheadline : .headline)
+                                .monospacedDigit()
+                                .foregroundColor(.secondary)
+                        }
+                        ProgressView(value: viewModel.progress)
+                            .tint(.blue)
+                            .animation(.easeInOut(duration: 0.25), value: viewModel.progress)
                     }
-                    ProgressView(value: viewModel.progress)
-                        .tint(.blue)
-                        .animation(.easeInOut(duration: 0.25), value: viewModel.progress)
                 }
-                
+                .padding(.horizontal,100)
+                .padding(.top, 0)
+                .padding(.bottom, 4)
             }
-            // I tried setting the horizontal padding dynamically to no avail. 100 seems to look good for the various orientations and devices
-            .padding(.horizontal,100)
-            .padding(.top, 0)
-            .padding(.bottom, 4)
-            //.background(.ultraThinMaterial)
         }
         .sheet(isPresented: $viewModel.isShowingLeaderboard) {
             GameCenterView(leaderboardID: viewModel.leaderboardID)
