@@ -294,11 +294,16 @@ struct ContentView: View {
     @MainActor
     private func dealCards() async {
         dealtIndices.removeAll()
+        // Start looping deal sound and guarantee we stop when done or cancelled
+        startDealSoundLoop()
+        defer { stopDealSoundLoop() }
+
         // Tune these to taste
         let delayStep: Double = 0.07
         let spring = Animation.spring(response: 0.35, dampingFraction: 0.85, blendDuration: 0.15)
         // Deal in reverse order
         for idx in viewModel.cards.indices.reversed() {
+            if Task.isCancelled { break }
             try? await Task.sleep(for: .seconds(delayStep))
             withAnimation(spring) {
                 _ = dealtIndices.insert(idx)

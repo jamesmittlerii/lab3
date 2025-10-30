@@ -117,6 +117,7 @@ final class GameViewModel: ObservableObject {
                     guard let self else { return }
                     self.transientFaceUp.subtract(indices)
                     self.isInteractionDisabled = false
+                    playFlipSound()
                 }
             }
             .store(in: &cancellables)
@@ -136,6 +137,19 @@ final class GameViewModel: ObservableObject {
 
     func flip(cardAt index: Int) {
         guard !isInteractionDisabled else { return }
+
+        // Let the model validate the flip preconditions (not already up, not solved, <2 up, etc.)
+        // We’ll play the flip sound only when we actually proceed with a valid flip.
+        // Do a quick local check to mirror the model’s early guards and avoid
+        // playing sound on ignored taps.
+        guard cards.indices.contains(index),
+              !cards[index].isFaceUp,
+              !cards[index].solved
+        else { return }
+
+        // Play a short “slap/tock” sound for a valid user flip
+        playFlipSound()
+
         model.flip(cardAt: index)
     }
 
@@ -159,4 +173,3 @@ final class GameViewModel: ObservableObject {
         return cards[index].isFaceUp || transientFaceUp.contains(index)
     }
 }
-

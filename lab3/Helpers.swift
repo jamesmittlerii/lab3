@@ -27,6 +27,7 @@
 
 import UIKit
 import AudioToolbox
+import AVFoundation
 
 // Helper to get the current key window’s root view controller in a scene-based app
 func currentRootViewController() -> UIViewController? {
@@ -44,17 +45,75 @@ func currentRootViewController() -> UIViewController? {
 }
 
 // Simple haptic helpers
- func playMatchHaptic() {
+func playMatchHaptic() {
     let generator = UINotificationFeedbackGenerator()
     generator.notificationOccurred(.success)
 }
 
- func playMismatchHaptic() {
+func playMismatchHaptic() {
     let generator = UINotificationFeedbackGenerator()
     generator.notificationOccurred(.warning)
 }
 
 // Win sound helper (System Sound 1322 "Bloom")
- func playWinSound() {
+func playWinSound() {
     AudioServicesPlaySystemSound(1322)
+}
+
+// MARK: - Flip sound from asset catalog
+
+// Keep a single player around for low latency
+private var flipPlayer: AVAudioPlayer?
+
+func playFlipSound() {
+    // Lazily load the "slapsound" Data asset the first time
+    if flipPlayer == nil {
+        if let data = NSDataAsset(name: "SlapSound")?.data {
+            do {
+                flipPlayer = try AVAudioPlayer(data: data)
+                flipPlayer?.prepareToPlay()
+            } catch {
+                print("Failed to init flip sound: \(error)")
+            }
+        }
+    }
+
+    flipPlayer?.currentTime = 0
+    flipPlayer?.play()
+}
+
+// MARK: - Dealing sound loop from asset catalog
+
+private var dealPlayer: AVAudioPlayer?
+
+func startDealSoundLoop(volume: Float = 1.0) {
+    // If already playing, restart from the beginning
+    if let p = dealPlayer {
+        p.currentTime = 0
+        p.numberOfLoops = -1
+        p.volume = volume
+        p.play()
+        return
+    }
+
+    guard let data = NSDataAsset(name: "Deal2Sound")?.data else {
+        // Ensure you have a Data asset named exactly "DealSound" in your asset catalog
+        return
+    }
+
+    do {
+        let player = try AVAudioPlayer(data: data)
+        player.numberOfLoops = -1 // loop indefinitely
+        player.volume = volume
+        player.prepareToPlay()
+        player.play()
+        dealPlayer = player
+    } catch {
+        print("Failed to init DealSound: \(error)")
+    }
+}
+
+func stopDealSoundLoop() {
+    dealPlayer?.stop()
+    dealPlayer = nil
 }
