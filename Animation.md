@@ -6,7 +6,7 @@ First is an animation when flipping the card. Some effort went into ensuring the
 
 Second is an animation to wiggle the two cards that were immediately matched for a small time. The same animation logic is used to wiggle all the cards when the player solves the puzzle.
 
-Third, at the beginning of the game, there is an animation to "[deal](lab3/blob/e90abffa019419988c89aea64f039f4d16dd9f14/lab3/ContentView.swift#L238)" the cards into the grid.
+Third, at the beginning of the game, there is an animation to "[deal](lab3/ContentView.swift#L238)" the cards into the grid.
 
 Lastly, there's an animation when the player wins - one of either [fireworks](./lab3/FireworksView.swift), [confetti](./lab3/ConfettiView.swift) or [balloons](./lab3/BalloonAscentView.swift).
 
