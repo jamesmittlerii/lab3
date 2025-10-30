@@ -382,6 +382,8 @@ struct ContentView: View {
                         ConfettiView()
                     case .fireworks:
                         FireworksView()
+                    case .ballon:
+                        BalloonAscentView()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
