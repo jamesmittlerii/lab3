@@ -172,4 +172,16 @@ final class GameViewModel: ObservableObject {
         guard cards.indices.contains(index) else { return false }
         return cards[index].isFaceUp || transientFaceUp.contains(index)
     }
+
+    // MARK: - Dealing sound intents from the View
+
+    func dealDidStart(volume: Float = 1.0) {
+        // Forward to the shared helper (or, in a future refactor, to an injected SoundService)
+        startDealSoundLoop(volume: volume)
+    }
+
+    func dealDidFinish() {
+        stopDealSoundLoop()
+    }
 }
+

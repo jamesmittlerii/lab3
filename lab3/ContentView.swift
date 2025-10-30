@@ -294,9 +294,12 @@ struct ContentView: View {
     @MainActor
     private func dealCards() async {
         dealtIndices.removeAll()
-        // Start looping deal sound and guarantee we stop when done or cancelled
-        startDealSoundLoop()
-        defer { stopDealSoundLoop() }
+        // Tell the ViewModel we’re starting the dealing sequence (intent-based)
+        viewModel.dealDidStart()
+        defer {
+            // Ensure we always notify finish (even on cancellation)
+            viewModel.dealDidFinish()
+        }
 
         // Tune these to taste
         let delayStep: Double = 0.07
@@ -530,3 +533,4 @@ final class GameCenterDelegate: NSObject, GKGameCenterControllerDelegate {
 #Preview {
     ContentView()
 }
+
