@@ -32,9 +32,10 @@ import GameKit
 @MainActor
 final class GameViewModel: ObservableObject {
 
-    enum CelebrationStyle {
+    enum CelebrationStyle: CaseIterable, Identifiable  {
         case confetti
         case fireworks
+        var id: Self { self }
     }
 
     // Services
@@ -87,9 +88,7 @@ final class GameViewModel: ObservableObject {
             .sink { [weak self] won in
                 guard let self else { return }
                 if won {
-                    let style: CelebrationStyle = nextCelebrationIsFireworks ? .fireworks : .confetti
-                    self.celebration = style
-                    self.nextCelebrationIsFireworks.toggle()
+                    self.celebration = CelebrationStyle.allCases.randomElement()
                     playWinSound()
                     Task { [weak self] in
                         try? await Task.sleep(for: .seconds(2.5))
