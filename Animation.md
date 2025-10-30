@@ -2,9 +2,9 @@
 
 There are several animations in this application. 
 
-First is an animation when flipping the card. Some effort went into ensuring the animation was smooth and ensuring the back of the card transitioned to the front of the card at the right time. It also was designed so the flip “reverses” when a card goes back to face down.
+First is an animation when [flipping](lab3/ContentView.swift#L96) the card. Some effort went into ensuring the animation was smooth and ensuring the back of the card transitioned to the front of the card at the right time. It also was designed so the flip “reverses” when a card goes back to face down.
 
-Second is an animation to wiggle the two cards that were immediately matched for a small time. The same animation logic is used to wiggle all the cards when the player solves the puzzle.
+Second is an animation to [wiggle](lab3/ContentView.swift#L123) the two cards that were immediately matched for a small time. The same animation logic is used to wiggle all the cards when the player solves the puzzle.
 
 Third, at the beginning of the game, there is an animation to "[deal](lab3/ContentView.swift#L238)" the cards into the grid.
 
