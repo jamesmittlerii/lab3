@@ -32,6 +32,11 @@ import GameKit
 @MainActor
 final class GameViewModel: ObservableObject {
 
+    enum CelebrationStyle {
+        case confetti
+        case fireworks
+    }
+
     // Services
     private let gameCenterManager: GameCenterManager
     private let model: GameModel
@@ -44,9 +49,12 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var isAuthenticated: Bool = false
 
     // UI-only state
-    @Published var showConfetti = false
     @Published var wigglingIndices = Set<Int>()
     @Published var isShowingLeaderboard = false
+
+    // Celebration overlay (nil means no celebration)
+    @Published var celebration: CelebrationStyle? = nil
+    private var nextCelebrationIsFireworks = false
 
     // Presentation overlay: indices temporarily shown face-up after mismatch
     @Published private var transientFaceUp = Set<Int>()
@@ -73,17 +81,19 @@ final class GameViewModel: ObservableObject {
         gameCenterManager.$isAuthenticated
             .assign(to: &$isAuthenticated)
 
-        // Confetti and sound on win
+        // Celebration and sound on win; alternate between confetti and fireworks
         model.$isWin
             .removeDuplicates()
             .sink { [weak self] won in
                 guard let self else { return }
                 if won {
-                    self.showConfetti = true
+                    let style: CelebrationStyle = nextCelebrationIsFireworks ? .fireworks : .confetti
+                    self.celebration = style
+                    self.nextCelebrationIsFireworks.toggle()
                     playWinSound()
                     Task { [weak self] in
                         try? await Task.sleep(for: .seconds(2.5))
-                        self?.showConfetti = false
+                        self?.celebration = nil
                     }
                 }
             }
@@ -130,7 +140,7 @@ final class GameViewModel: ObservableObject {
         transientFaceUp.removeAll()
         isInteractionDisabled = false
         wigglingIndices.removeAll()
-        showConfetti = false
+        celebration = nil
     }
     
     /* turn over a card */
