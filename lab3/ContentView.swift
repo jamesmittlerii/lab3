@@ -69,12 +69,19 @@ struct TiledCard: View {
             // BACK face - mahjong image with green background
             Group {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(red: 60.0/255.0, green: 98.0/255.0, blue: 78.0/255.0))
+                    .fill(Color(red: 54.0/255.0, green: 96.0/255.0, blue: 79.0/255.0))
                 Image("mahjong")
                     .resizable()
                     .scaledToFit()
                 
                     .padding(isPhone ? 6 : 12)
+                    .compositingGroup()
+                                       .mask(
+                                           RoundedRectangle(cornerRadius: 12)
+                                               .inset(by: 12)   // keep a bit of margin from the stroke
+                                               .fill(.white)
+                                               .blur(radius: 12)     // larger blur = softer edge
+                                       )
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(lineWidth: 3)
                     .foregroundColor(.blue)
