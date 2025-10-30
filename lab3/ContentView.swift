@@ -66,14 +66,24 @@ struct TiledCard: View {
             // without this, the card started showing right away
             .opacity(flipRotation >= 90 ? 1 : 0)
 
-            // BACK face - mahjong image with green background
+            // BACK face - mahjong image with green background and feathered edges
             Group {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(red: 61.0/255.0, green: 100.0/255.0, blue: 80.0/255.0))
+                    .fill(Color(red: 54.0/255.0, green: 96.0/255.0, blue: 79.0/255.0))
+
                 Image("mahjong")
                     .resizable()
                     .scaledToFit()
                     .padding(isPhone ? 6 : 12)
+                    // Feather the edges so the image blends with the green background
+                    .compositingGroup()
+                    .mask(
+                        RoundedRectangle(cornerRadius: 12)
+                            .inset(by: 12)   // keep a bit of margin from the stroke
+                            .fill(.white)
+                            .blur(radius: 12)     // larger blur = softer edge
+                    )
+
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(lineWidth: 3)
                     .foregroundColor(.blue)
