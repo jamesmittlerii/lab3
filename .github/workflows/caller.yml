@@ -7,9 +7,9 @@ permissions:
 
 on:
   push:
-    branches: [ "working" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [ "**" ]
+#  pull_request:
+#    branches: [ "main" ]
 
 
 concurrency:

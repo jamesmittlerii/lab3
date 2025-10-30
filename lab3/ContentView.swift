@@ -34,6 +34,8 @@ struct TiledCard: View {
     let isMatchWiggling: Bool
     let isWinWiggling: Bool
     let onTap: () -> Void
+    
+    let isPhone = UIDevice.current.userInterfaceIdiom == .phone
 
     // rotation angle is for wiggle
     @State private var rotationAngle: Angle = .zero
@@ -56,7 +58,7 @@ struct TiledCard: View {
                 Image(card.content)
                     .resizable()
                     .scaledToFit()
-                    .padding()
+                    .padding(isPhone ? 8 : 12)
             }
             // start with the image flipped so when we rotate, it comes out looking right
             .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
@@ -64,12 +66,27 @@ struct TiledCard: View {
             // without this, the card started showing right away
             .opacity(flipRotation >= 90 ? 1 : 0)
 
-            // BACK face
-            // only show the back of the card if the angle supports it
-            RoundedRectangle(cornerRadius: 10)
-                .foregroundColor(.blue)
-             //   .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
-                .opacity(flipRotation < 90 ? 1 : 0)
+            // BACK face - mahjong image with green background
+            Group {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(red: 54.0/255.0, green: 96.0/255.0, blue: 79.0/255.0))
+                Image("mahjong")
+                    .resizable()
+                    .scaledToFit()
+                
+                    .padding(isPhone ? 6 : 12)
+                    .compositingGroup()
+                                       .mask(
+                                           RoundedRectangle(cornerRadius: 12)
+                                               .inset(by: 12)   // keep a bit of margin from the stroke
+                                               .fill(.white)
+                                               .blur(radius: 12)     // larger blur = softer edge
+                                       )
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(lineWidth: 3)
+                    .foregroundColor(.blue)
+            }
+            .opacity(flipRotation < 90 ? 1 : 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // for wiggle
@@ -119,61 +136,6 @@ struct TiledCard: View {
     }
 }
 
-// this is for showing some confetti when we win
-struct ConfettiParticle: Identifiable {
-    let id = UUID()
-    var x: Double
-    var y: Double
-    var size: Double
-    var opacity: Double
-    var duration: Double
-}
-
-// a view to show some confetti
-struct ConfettiView: View {
-    @State private var confetti = [ConfettiParticle]()
-    let colors: [Color] = [
-        .red, .blue, .green, .orange, .purple, .pink, .yellow,
-    ]
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                ForEach(confetti) { particle in
-                    Circle()
-                        .fill(colors.randomElement() ?? .blue)
-                        .frame(width: particle.size, height: particle.size)
-                        .position(x: particle.x, y: particle.y)
-                        .opacity(particle.opacity)
-                        .animation(
-                            .easeOut(duration: particle.duration),
-                            value: particle.y
-                        )
-                }
-            }
-            .onAppear {
-                confetti = (0..<60).map { _ in
-                    ConfettiParticle(
-                        x: Double.random(in: 0...geo.size.width),
-                        y: -20,
-                        size: Double.random(in: 8...18),
-                        opacity: 1,
-                        duration: Double.random(in: 1.0...2.2)
-                    )
-                }
-                withAnimation(.easeOut(duration: 2)) {
-                    for idx in confetti.indices {
-                        confetti[idx].y = geo.size.height + 40
-                        confetti[idx].opacity = 0
-                    }
-                }
-            }
-        }
-        .allowsHitTesting(false)
-    }
-}
-
-
 
 // this is the main view for the game
 struct ContentView: View {
@@ -181,6 +143,7 @@ struct ContentView: View {
     // use a variable to determine if we are iphone or ipad
     // unfortunately we need to tweak because the screen ratios and sizes are so different
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     
     // ViewModel for MVVM
     @StateObject private var viewModel: GameViewModel
@@ -193,6 +156,9 @@ struct ContentView: View {
     // anything with @state will refresh the UI on change
     @State private var showingLeaderboard = false
     
+    // Dealing animation state
+    @State private var dealtIndices: Set<Int> = []
+
     // the grid layout logic got nasty so moved to a function
     // this structure returns the calculations
     struct GridParameters {
@@ -216,8 +182,6 @@ struct ContentView: View {
         // --- Setup and Context ---
         let isLandscape = geometry.size.width > geometry.size.height
         let isPhone = UIDevice.current.userInterfaceIdiom == .phone
-        // Use optional chaining with a fallback for horizontalSizeClass
-       // let isRegular = horizontalSizeClass == .regular
        
         let spacing: CGFloat = isPhone ? 12 : 24
 
@@ -269,6 +233,29 @@ struct ContentView: View {
         )
     }
 
+    // Deal animation helper
+    @MainActor
+    private func dealCards() async {
+        dealtIndices.removeAll()
+        // Tell the ViewModel we’re starting the dealing sequence (intent-based)
+        viewModel.dealDidStart()
+        defer {
+            // Ensure we always notify finish (even on cancellation)
+            viewModel.dealDidFinish()
+        }
+
+        // Tune these to taste
+        let delayStep: Double = 0.07
+        let spring = Animation.spring(response: 0.35, dampingFraction: 0.85, blendDuration: 0.15)
+        // Deal in reverse order
+        for idx in viewModel.cards.indices.reversed() {
+            if Task.isCancelled { break }
+            try? await Task.sleep(for: .seconds(delayStep))
+            withAnimation(spring) {
+                _ = dealtIndices.insert(idx)
+            }
+        }
+    }
     
     // this is our main view...finally!
     var body: some View {
@@ -301,6 +288,7 @@ struct ContentView: View {
                     // new game icon
                     Button {
                         viewModel.newGame()
+                        Task { await dealCards() }
                     } label: {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .foregroundColor(.blue)
@@ -334,6 +322,14 @@ struct ContentView: View {
                         horizontalSizeClass: horizontalSizeClass
                     )
 
+                    // Precompute a deck origin (top-center above the grid)
+                    let gridWidth = params.itemWidth * CGFloat(params.columnCount)
+                        + params.spacing * CGFloat(params.columnCount - 1)
+                    let deckOrigin = CGPoint(
+                        x: gridWidth / 2.0,
+                        y: -params.itemHeight - 24 // slightly above first row
+                    )
+
                     VStack(spacing: 8) {
                         // trusty LazyVGrid
                         LazyVGrid(columns: params.columns, spacing: params.spacing) {
@@ -342,74 +338,136 @@ struct ContentView: View {
                             // send each TileCard our wiggle flags
                             
                             ForEach(viewModel.cards.indices, id: \.self) { idx in
+                                let isDealt = dealtIndices.contains(idx)
+                                
                                 TiledCard(
                                     card: viewModel.cards[idx],
                                     isFaceUp: viewModel.isPresentingFaceUp(idx),
                                     isMatchWiggling: viewModel.wigglingIndices.contains(idx),
-                                    isWinWiggling: viewModel.showConfetti
+                                    isWinWiggling: viewModel.celebration != nil
                                 ) {
                                     // secret sauce closure to handle flip card logic in the model
                                     viewModel.flip(cardAt: idx)
                                 }
-                                // Set the frame to our calculated size.
-                                // The aspect ratio is already handled in the calculation.
-                                .frame(width: params.itemWidth, height: params.itemHeight)
-                                .allowsHitTesting(!viewModel.isInteractionDisabled)
+                                // Compute the target center of this card within the grid
+                                .modifier(DealInModifier(
+                                    index: idx,
+                                    columnCount: params.columnCount,
+                                    itemSize: CGSize(width: params.itemWidth, height: params.itemHeight),
+                                    spacing: params.spacing,
+                                    deckOrigin: deckOrigin,
+                                    isDealt: isDealt
+                                ))
+                                .allowsHitTesting(!viewModel.isInteractionDisabled && isDealt)
                             }
                         }
                         // Keep grid full width; it will take remaining height
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .onAppear {
+                            // trigger the initial deal when the grid appears
+                            Task { await dealCards() }
+                        }
+                        
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .padding()
 
-            // if we won, show some confetti
-            // this floats on top
-            if viewModel.showConfetti {
-                ConfettiView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .transition(.opacity)
-                    .zIndex(1)
+            // if we won, show a celebration overlay (confetti or fireworks)
+            if let style = viewModel.celebration {
+                Group {
+                    switch style {
+                    case .confetti:
+                        ConfettiView()
+                    case .fireworks:
+                        FireworksView()
+                    case .ballon:
+                        BalloonAscentView()
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.opacity)
+                .zIndex(1)
             }
         }
-        // the confetti we throw up when we win
-        .animation(.default, value: viewModel.showConfetti)
+        // animate overlay show/hide
+        .animation(.default, value: viewModel.celebration != nil)
 
         // Bottom progress section pinned to the safe area
-        // fitting the grid seems to be tricky
-        // here we just pin to the bottom and that seems to do the trick
+        // Hide on iPhone in landscape (compact vertical size class)
         .safeAreaInset(edge: .bottom) {
-            let percent = Int((viewModel.progress * 100).rounded())
-            HStack {
-                VStack(spacing: 6) {
-                    HStack {
-                        Text("Progress")
-                            .font(isPhone ? .subheadline : .headline)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text("\(percent)%")
-                            .font(isPhone ? .subheadline : .headline)
-                            .monospacedDigit()
-                            .foregroundColor(.secondary)
+            let isPhone = UIDevice.current.userInterfaceIdiom == .phone
+            if isPhone, verticalSizeClass == .compact {
+                // No progress bar in iPhone landscape
+                EmptyView()
+            } else {
+                let percent = Int((viewModel.progress * 100).rounded())
+                HStack {
+                    VStack(spacing: 6) {
+                        HStack {
+                            Text("Progress")
+                                .font(isPhone ? .subheadline : .headline)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text("\(percent)%")
+                                .font(isPhone ? .subheadline : .headline)
+                                .monospacedDigit()
+                                .foregroundColor(.secondary)
+                        }
+                        ProgressView(value: viewModel.progress)
+                            .tint(.blue)
+                            .animation(.easeInOut(duration: 0.25), value: viewModel.progress)
                     }
-                    ProgressView(value: viewModel.progress)
-                        .tint(.blue)
-                        .animation(.easeInOut(duration: 0.25), value: viewModel.progress)
                 }
-                
+                .padding(.horizontal,100)
+                .padding(.top, 0)
+                .padding(.bottom, 4)
             }
-            // I tried setting the horizontal padding dynamically to no avail. 100 seems to look good for the various orientations and devices
-            .padding(.horizontal,100)
-            .padding(.top, 0)
-            .padding(.bottom, 4)
-            //.background(.ultraThinMaterial)
         }
         .sheet(isPresented: $viewModel.isShowingLeaderboard) {
             GameCenterView(leaderboardID: viewModel.leaderboardID)
                 .ignoresSafeArea()
         }
+    }
+}
+
+// Helper view modifier to make each card fly in from a shared "deck" origin
+private struct DealInModifier: ViewModifier {
+    let index: Int
+    let columnCount: Int
+    let itemSize: CGSize
+    let spacing: CGFloat
+    let deckOrigin: CGPoint
+    let isDealt: Bool
+
+    func body(content: Content) -> some View {
+        // Determine row/column
+        let col = index % columnCount
+        let row = index / columnCount
+
+        // Compute the target center within the grid's coordinate space
+        let targetCenter = CGPoint(
+            x: CGFloat(col) * (itemSize.width + spacing) + itemSize.width / 2.0,
+            y: CGFloat(row) * (itemSize.height + spacing) + itemSize.height / 2.0
+        )
+
+        // Offset needed to place this card at the deck origin
+        let dx = deckOrigin.x - targetCenter.x
+        let dy = deckOrigin.y - targetCenter.y
+
+        // Spin parameters
+        let turns: Double = 1.5 // number of full spins while flying in
+        let direction: Double = 1 // index.isMultiple(of: 2) ? 1 : -1 // alternate direction for variety
+        let spinDegrees = direction * 360.0 * turns
+
+        return content
+            .frame(width: itemSize.width, height: itemSize.height)
+            .opacity(isDealt ? 1 : 0)
+            .scaleEffect(isDealt ? 1 : 0.6)
+            .rotationEffect(.degrees(isDealt ? 0 : spinDegrees))
+            .offset(x: isDealt ? 0 : dx, y: isDealt ? 0 : dy)
+            .animation(.spring(response: 0.6, dampingFraction: 0.85), value: isDealt)
     }
 }
 
