@@ -25,5 +25,7 @@ Further discussion about [Functionality](./Functionality.md).
 
 Some details about the automated [Build pipeline](./Build.md).
 
+More detail about our [animations](./Animation.md).
+
 https://github.com/user-attachments/assets/05bdcccc-7405-4504-9cb7-db8284ac102c
 
