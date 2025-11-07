@@ -1,16 +1,16 @@
 /**
 
  * __Partner Lab 3__
- * Jim Mittler
- * 20 October 2025
-
-
+ * Jim Mittler, Dave Norvall
+ * Group 11
+ * 7 November  2025
+ 
  We've updated our Game to use MVVM architecture
  
  all the game logic is moved to the GameModel class
  the game center logic was moved to GameCenterManager
  
-
+GameCenterManager handles the communication with Apple game manager to keep track of high score
 
  _Italic text_
  __Bold text__

@@ -1,6 +1,22 @@
 import SwiftUI
 
-// MARK: - BalloonParticle
+/**
+ 
+ * __Partner Lab 3__
+ * Jim Mittler, Dave Norvall
+ * Group 11
+ * 7 November  2025
+ 
+ This view does a little ballon animation we play when we win
+ 
+ _Italic text__
+ __Bold text__
+ ~~Strikethrough text~~
+ 
+ */
+
+// the basic particle
+
 struct BalloonParticle: Identifiable {
     let id = UUID()
     var x: Double            // Current X position
@@ -15,7 +31,7 @@ struct BalloonParticle: Identifiable {
     var duration: Double     // Total animation duration
 }
 
-// MARK: - BalloonAscentView
+// the view
 struct BalloonAscentView: View {
     @State private var balloons: [BalloonParticle] = []
     
@@ -53,8 +69,8 @@ struct BalloonAscentView: View {
         .allowsHitTesting(false) // Don't block interactions behind the balloons
     }
     
-    // MARK: - Balloon Generation
-    private func generateBalloons(in size: CGSize) {
+    // build our ballons
+     private func generateBalloons(in size: CGSize) {
         for _ in 0..<numberOfBalloons {
             let delay = Double.random(in: minDelay...maxDelay)
             
@@ -85,12 +101,9 @@ struct BalloonAscentView: View {
         }
     }
     
-    // MARK: - Balloon Animation Logic
-    // MARK: - Balloon Animation Logic
         private func animateBalloon(at index: Int, in size: CGSize) {
             var currentBalloon = balloons[index]
             
-            // **MODIFICATION:** Enforce a maximum ascent time.
             // We'll use the randomized speed to vary the duration, but cap it near 3.0 seconds.
             let maxDuration: Double = 3.0
             
@@ -129,7 +142,7 @@ struct BalloonAscentView: View {
         }
 }
 
-// MARK: - BalloonShape (Custom Shape for a classic balloon look)
+// our ballon shape
 struct BalloonShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -147,9 +160,6 @@ struct BalloonShape: Shape {
     }
 }
 
-// MARK: - Preview
 #Preview {
-   
         BalloonAscentView()
-    
 }

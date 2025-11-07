@@ -1,9 +1,9 @@
 /**
  
  * __Partner Lab 3__
- * Jim Mittler
- * 20 October 2025
- 
+ * Jim Mittler, Dave Norvall
+ * Group 11
+ * 7 November  2025
  
  We've updated our Game to use MVVM architecture
  
@@ -29,9 +29,11 @@ import Foundation
 import Combine
 import GameKit
 
+// our view model
 @MainActor
 final class GameViewModel: ObservableObject {
 
+    // some options for animation when we win
     enum CelebrationStyle: CaseIterable, Identifiable  {
         case confetti
         case fireworks
@@ -65,6 +67,7 @@ final class GameViewModel: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
 
+    // do setup work in here
     init(gameCenterManager: GameCenterManager) {
         self.gameCenterManager = gameCenterManager
         self.model = GameModel(gameCenterManager: gameCenterManager)
@@ -74,7 +77,7 @@ final class GameViewModel: ObservableObject {
         model.$flipCount.assign(to: &$flipCount)
         model.$personalBest.assign(to: &$personalBest)
 
-        // Derived progress
+        // Derived progress for our progress bar
         model.objectWillChange
             .map { [weak model] _ in model?.progress ?? 0.0 }
             .assign(to: &$progress)
@@ -83,7 +86,7 @@ final class GameViewModel: ObservableObject {
         gameCenterManager.$isAuthenticated
             .assign(to: &$isAuthenticated)
 
-        // Celebration and sound on win; alternate between confetti and fireworks
+        // Celebration and sound on win; alternate between confetti and fireworks and balloons
         model.$isWin
             .removeDuplicates()
             .sink { [weak self] won in
@@ -183,13 +186,14 @@ final class GameViewModel: ObservableObject {
         return cards[index].isFaceUp || transientFaceUp.contains(index)
     }
 
-    // MARK: - Dealing sound intents from the View
-
+    // used to signal we started dealing (for the sound)
+    
     func dealDidStart(volume: Float = 1.0) {
         // Forward to the shared helper (or, in a future refactor, to an injected SoundService)
         startDealSoundLoop(volume: volume)
     }
 
+    // stop deal
     func dealDidFinish() {
         stopDealSoundLoop()
     }

@@ -1,9 +1,17 @@
-//
-//  ConfettiView.swift
-//  lab3
-//
-//  Created by cisstudent on 10/30/25.
-//
+/**
+ 
+ * __Partner Lab 3__
+ * Jim Mittler, Dave Norvall
+ * Group 11
+ * 7 November  2025
+ 
+ This view does some confetti  when we win
+ 
+ _Italic text__
+ __Bold text__
+ ~~Strikethrough text~~
+ 
+ */
 
 import SwiftUI
 
@@ -33,10 +41,9 @@ struct ConfettiView: View {
     private let fallDurationRange: ClosedRange<Double> = 1.2...2.4 // Fall time
     private let sizeRange: ClosedRange<Double> = 8...18
     
-    // NEW Tunables for bottom launch
     private let launchDuration: Double = 0.8 // Duration of the initial upward launch
     
-    // **NEW TUNABLE:** How long into the fall before the fade starts (as a percentage).
+    // How long into the fall before the fade starts (as a percentage).
         private let fadeStartFactor: Double = 0.75
 
     var body: some View {
@@ -91,7 +98,7 @@ struct ConfettiView: View {
 
         confetti.append(contentsOf: newParticles)
 
-        // --- 2. Initial Upward Launch Animation (STAGE 1) ---
+        // Initial Upward Launch Animation (STAGE 1) ---
         // This moves all particles to launchToY (the top)
         withAnimation(.easeOut(duration: launchDuration)) {
             for idx in startIndex..<confetti.count {
@@ -109,13 +116,13 @@ struct ConfettiView: View {
                     
                     // The total fall animation is a combination of two animations:
                     
-                    // 1. **Initial Full Opacity Fall:** Move position with full opacity.
+                    // Move position with full opacity.
                     //    This animation covers the entire duration.
                     withAnimation(.linear(duration: particleDuration)) {
                         confetti[idx].y = confetti[idx].fallToY
                     }
                     
-                    // 2. **Delayed Fade Out:** Change opacity near the end of the fall.
+                    // Change opacity near the end of the fall.
                     //    We delay the opacity change until the end of the full duration.
                     DispatchQueue.main.asyncAfter(deadline: .now() + (particleDuration * fadeStartFactor)) {
                         
@@ -126,7 +133,7 @@ struct ConfettiView: View {
                 }
             }
             
-        // Optional: Remove particles after they fall to clear memory
+        // Remove particles after they fall to clear memory
         let maxDuration = fallDurationRange.upperBound + launchDuration
         DispatchQueue.main.asyncAfter(deadline: .now() + maxDuration + 0.1) {
             confetti.removeFirst(newParticles.count)

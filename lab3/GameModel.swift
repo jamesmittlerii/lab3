@@ -1,8 +1,9 @@
 /**
  
  * __Partner Lab 3__
- * Jim Mittler
- * 20 October 2025
+ * Jim Mittler, Dave Norvall
+ * Group 11
+ * 7 November  2025
  
  
  We've updated our Game to use MVVM architecture
@@ -75,7 +76,7 @@ final class GameModel: ObservableObject {
     private weak var gameCenterManager: GameCenterManager?
     private var cancellables = Set<AnyCancellable>()
 
-    // MARK: - Progress metrics exposed to the UI
+    // Progress metrics exposed to the UI
 
     var totalCards: Int {
         cards.count

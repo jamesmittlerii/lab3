@@ -1,12 +1,20 @@
-//
-//  FireworksView.swift
-//  lab3
-//
-//  Created by cisstudent on 10/30/25.
-//
-
+/**
+ 
+ * __Partner Lab 3__
+ * Jim Mittler, Dave Norvall
+ * Group 11
+ * 7 November  2025
+ 
+ This view does some confetti when we win
+ 
+ _Italic text__
+ __Bold text__
+ ~~Strikethrough text~~
+ 
+ */
 import SwiftUI
 
+// a particle
 struct FireworkParticle: Identifiable {
     let id = UUID()
     var x: Double
@@ -19,6 +27,7 @@ struct FireworkParticle: Identifiable {
     var duration: Double
 }
 
+// the view to animate the particles
 struct FireworksView: View {
     @State private var particles: [FireworkParticle] = []
     private let launchCount = 6

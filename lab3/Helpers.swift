@@ -1,8 +1,9 @@
 /**
  
  * __Partner Lab 3__
- * Jim Mittler
- * 20 October 2025
+ * Jim Mittler, Dave Norvall
+ * Group 11
+ * 7 November  2025
  
  
  We've updated our Game to use MVVM architecture
@@ -60,7 +61,6 @@ func playWinSound() {
     AudioServicesPlaySystemSound(1322)
 }
 
-// MARK: - Flip sound from asset catalog
 
 // Keep a single player around for low latency
 private var flipPlayer: AVAudioPlayer?
@@ -82,10 +82,9 @@ func playFlipSound() {
     flipPlayer?.play()
 }
 
-// MARK: - Dealing sound loop from asset catalog
-
 private var dealPlayer: AVAudioPlayer?
 
+// make a deal noise
 func startDealSoundLoop(volume: Float = 1.0) {
     // If already playing, restart from the beginning
     if let p = dealPlayer {
