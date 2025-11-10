@@ -28,7 +28,7 @@ import Combine
 @MainActor
 class GameCenterManager: ObservableObject {
     // Leaderboard identifier used across the app
-    let leaderboardID = "KingOfTheHill2"
+    let leaderboardID = "KingOfTheHill"
 
     // A published property to reflect the authentication status.
     @Published var isAuthenticated = GKLocalPlayer.local.isAuthenticated
