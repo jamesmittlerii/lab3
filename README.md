@@ -1,10 +1,24 @@
+**App Store**
+
+The game is available in the [App Store](https://apps.apple.com/us/app/mahjong-concentration-game/id6753714748).
+
 **Homework 13 Note:**
 
 We are using lab 3 for homework 13. The ask is to include a progress bar which has been added at the bottom of the screen to track progression to 100%.
 
 The video below illustrates the progress bar moving to 100% as the tiles are completed.
 
+[Watch the demo ▶️](https://github.com/user-attachments/assets/05bdcccc-7405-4504-9cb7-db8284ac102c)
+
 The architecture now confirms to MVVM so in the model we [compute a progress](./lab3/blob/main/lab3/GameModel.swift#L97), pass that through to the [view model](./lab3/blob/main/lab3/GameViewModel.swift#L81) and publish to the [view](./lab3/blob/main/lab3/ContentView.swift#L418).
+
+**Homework 15 Note:**
+
+We are using lab 3 for homework 15. The ask is to include a context menu in the app.
+
+The context menu was added as a long press on any of the tiled card. Here the user can select a card back color. (green looks best).
+
+[Watch the demo ▶️](https://github.com/user-attachments/assets/fad98247-615c-42f8-8af6-87febeb980e5)
 
 **Lab3 Note:**
 
