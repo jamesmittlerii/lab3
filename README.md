@@ -20,9 +20,6 @@ The context menu was added as a long press on any of the tiled card. Here the us
 
 [Watch the demo ▶️](https://github.com/user-attachments/assets/fad98247-615c-42f8-8af6-87febeb980e5)
 
-https://github.com/user-attachments/assets/fad98247-615c-42f8-8af6-87febeb980e5
-
-
 **Lab3 Note:**
 
 Dave and I synced up this past week on lab3. We each has made significant progress on our own codebases so we decided to collaborate on approaches but submit separate repos.
