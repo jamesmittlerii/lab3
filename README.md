@@ -1,3 +1,7 @@
+**App Store**
+
+The game is available in the [App Store](https://apps.apple.com/us/app/mahjong-concentration-game/id6753714748).
+
 **Homework 13 Note:**
 
 We are using lab 3 for homework 13. The ask is to include a progress bar which has been added at the bottom of the screen to track progression to 100%.
