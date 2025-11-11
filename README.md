@@ -16,6 +16,10 @@ We are using lab 3 for homework 15. The ask is to include a context menu in the 
 
 The context menu was added as a long press on any of the tiled card. Here the user can select a card back color. (green looks best).
 
+
+https://github.com/user-attachments/assets/fad98247-615c-42f8-8af6-87febeb980e5
+
+
 **Lab3 Note:**
 
 Dave and I synced up this past week on lab3. We each has made significant progress on our own codebases so we decided to collaborate on approaches but submit separate repos.
