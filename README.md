@@ -8,6 +8,8 @@ We are using lab 3 for homework 13. The ask is to include a progress bar which h
 
 The video below illustrates the progress bar moving to 100% as the tiles are completed.
 
+https://github.com/user-attachments/assets/05bdcccc-7405-4504-9cb7-db8284ac102c
+
 The architecture now confirms to MVVM so in the model we [compute a progress](./lab3/blob/main/lab3/GameModel.swift#L97), pass that through to the [view model](./lab3/blob/main/lab3/GameViewModel.swift#L81) and publish to the [view](./lab3/blob/main/lab3/ContentView.swift#L418).
 
 **Homework 15 Note:**
