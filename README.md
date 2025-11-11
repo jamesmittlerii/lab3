@@ -10,6 +10,12 @@ The video below illustrates the progress bar moving to 100% as the tiles are com
 
 The architecture now confirms to MVVM so in the model we [compute a progress](./lab3/blob/main/lab3/GameModel.swift#L97), pass that through to the [view model](./lab3/blob/main/lab3/GameViewModel.swift#L81) and publish to the [view](./lab3/blob/main/lab3/ContentView.swift#L418).
 
+**Homework 15 Note:**
+
+We are using lab 3 for homework 15. The ask is to include a context menu in the app.
+
+The context menu was added as a long press on any of the tiled card. Here the user can select a card back color. (green looks best).
+
 **Lab3 Note:**
 
 Dave and I synced up this past week on lab3. We each has made significant progress on our own codebases so we decided to collaborate on approaches but submit separate repos.
