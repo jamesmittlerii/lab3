@@ -1,2 +1,7 @@
-lab3.app.dSYM.zip
-lab3.ipa
+# iOS build artifacts
+*.ipa
+*.dSYM.zip
+*.dSYM
+# Xcode user state
+*.xcuserstate
+
