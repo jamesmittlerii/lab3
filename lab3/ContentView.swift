@@ -27,12 +27,37 @@ import Combine
 import GameKit
 import SwiftUI
 
+// Enum to define available card back colors
+private enum CardBackColor: String, CaseIterable, Identifiable {
+    case green = "Green"
+    case blue = "Blue"
+    case red = "Red"
+    case purple = "Purple"
+
+    var id: String { rawValue }
+
+    var color: Color {
+        switch self {
+        case .green:
+            // we tweaked green a bit to match the appicon
+            Color(red: 54.0/255.0, green: 96.0/255.0, blue: 79.0/255.0)
+        case .blue:
+            .blue
+        case .red:
+            .red
+        case .purple:
+            .purple
+        }
+    }
+}
+
 /* this is our structure for the tiled card in the UI */
 struct TiledCard: View {
     let card: Card
     let isFaceUp: Bool
     let isMatchWiggling: Bool
     let isWinWiggling: Bool
+    let backColor: Color // the color of the card back
     let onTap: () -> Void
     
     let isPhone = UIDevice.current.userInterfaceIdiom == .phone
@@ -69,7 +94,8 @@ struct TiledCard: View {
             // BACK face - mahjong image with green background
             Group {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(red: 54.0/255.0, green: 96.0/255.0, blue: 79.0/255.0))
+                    // use the chosen back color instead of hardcoded
+                    .fill(backColor)
                 Image("mahjong")
                     .resizable()
                     .scaledToFit()
@@ -167,6 +193,10 @@ struct ContentView: View {
         let columnCount: Int
         let spacing: CGFloat
         let columns: [GridItem]
+    }
+    
+    private var currentCardBackColor: Color {
+        (CardBackColor(rawValue: viewModel.cardBackColorName) ?? .green).color
     }
 
     // this is the logic to make the grid look nice
@@ -344,10 +374,26 @@ struct ContentView: View {
                                     card: viewModel.cards[idx],
                                     isFaceUp: viewModel.isPresentingFaceUp(idx),
                                     isMatchWiggling: viewModel.wigglingIndices.contains(idx),
-                                    isWinWiggling: viewModel.celebration != nil
+                                    isWinWiggling: viewModel.celebration != nil,
+                                    backColor: currentCardBackColor
                                 ) {
                                     // secret sauce closure to handle flip card logic in the model
                                     viewModel.flip(cardAt: idx)
+                                }
+                                
+                                // the context menu for Homework 15
+                                .contextMenu {
+                                    ForEach(CardBackColor.allCases) { backColor in
+                                        Button {
+                                            viewModel.setCardBackColor(name: backColor.rawValue)
+                                        } label: {
+                                            let isSelected = viewModel.cardBackColorName == backColor.rawValue
+                                            Label(
+                                                backColor.rawValue,
+                                                systemImage: isSelected ? "checkmark.circle.fill" : "circle"
+                                            )
+                                        }
+                                    }
                                 }
                                 // Compute the target center of this card within the grid
                                 .modifier(DealInModifier(

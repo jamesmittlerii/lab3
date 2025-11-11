@@ -51,6 +51,9 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var personalBest: Int?
     @Published private(set) var progress: Double = 0
     @Published private(set) var isAuthenticated: Bool = false
+    
+    // our new card back color for HW15
+    @Published var cardBackColorName: String
 
     // UI-only state
     @Published var wigglingIndices = Set<Int>()
@@ -71,6 +74,9 @@ final class GameViewModel: ObservableObject {
     init(gameCenterManager: GameCenterManager) {
         self.gameCenterManager = gameCenterManager
         self.model = GameModel(gameCenterManager: gameCenterManager)
+
+        // Initialize with a default
+        self.cardBackColorName = "Green"
 
         // Bridge model outputs to view-facing state
         model.$cards.assign(to: &$cards)
@@ -197,5 +203,9 @@ final class GameViewModel: ObservableObject {
     func dealDidFinish() {
         stopDealSoundLoop()
     }
+    
+    // Updates the card back color
+    func setCardBackColor(name: String) {
+        cardBackColorName = name
+    }
 }
-
