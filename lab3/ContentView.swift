@@ -96,7 +96,7 @@ struct TiledCard: View {
                 RoundedRectangle(cornerRadius: 10)
                     // use the chosen back color instead of hardcoded
                     .fill(backColor)
-                Image("mahjong")
+                Image("tile-transparent")
                     .resizable()
                     .scaledToFit()
                 
@@ -110,7 +110,7 @@ struct TiledCard: View {
                                        )
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(lineWidth: 3)
-                    .foregroundColor(.blue)
+                    .foregroundColor(.gray)
             }
             .opacity(flipRotation < 90 ? 1 : 0)
         }
